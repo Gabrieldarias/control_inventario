@@ -1,5 +1,5 @@
 {
-  "buildCommand": "echo 'Build complete'",
+  "buildCommand": "node build.js",
   "devCommand": "vercel dev",
   "outputDirectory": ".",
   "functions": {

@@ -14,7 +14,9 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Cargar configuración de Supabase ANTES de app.js -->
+    <!-- ✅ NUEVO: Cargar variables de entorno inyectadas por el build -->
+    <script src="env.js"></script>
+    <!-- Inicializar cliente de Supabase con variables -->
     <script src="supabaseClient.js"></script>
     <!-- SIN type="text/babel" - JavaScript nativo -->
     <script src="app.js"></script>

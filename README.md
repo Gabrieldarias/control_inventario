@@ -1,5 +1,35 @@
 # 🎉 SISTEMA TIENDA MVP v2.0 - IMPLEMENTACIÓN COMPLETADA
 
+## ⚡ INSTALACIÓN RÁPIDA (Lee esto primero!)
+
+```bash
+# 1. Clonar
+git clone https://github.com/tu-usuario/tienda-mvp.git
+cd tienda-mvp/backend
+
+# 2. Instalar
+npm install
+
+# 3. Configurar (copiar .env.example a .env)
+cp .env.example .env
+
+# 4. Inicializar base de datos
+npm run init-db
+npm run seed
+
+# 5. Ejecutar
+npm start
+
+# 6. Abrir navegador
+# http://localhost:3001
+
+# Credenciales: admin@example.com / adminpass
+```
+
+**¿Error de conexión?** Ver [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
+---
+
 ## ✨ Gestión de Inventario Profesional - Todas las Funcionalidades
 
 Bienvenido al Sistema Tienda MVP v2.0, un sistema completo de gestión de inventario implementado con las **15 funcionalidades solicitadas** totalmente funcionales.

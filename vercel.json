@@ -1,0 +1,21 @@
+{
+  "buildCommand": "echo 'Build complete'",
+  "devCommand": "vercel dev",
+  "outputDirectory": ".",
+  "framework": "vanilla",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": [
+    "SUPABASE_URL",
+    "SUPABASE_KEY",
+    "JWT_SECRET"
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
+}

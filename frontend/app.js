@@ -24,11 +24,28 @@ function getErrorMessage(error) {
 }
 
 function api() {
-  const base = 'http://localhost:3001/api';
+  // Obtener URL base de variable de entorno o usar la URL actual
+  const getBaseUrl = () => {
+    // Si hay REACT_APP_API_URL en variables de entorno
+    if (typeof REACT_APP_API_URL !== 'undefined') {
+      return REACT_APP_API_URL + '/api';
+    }
+    
+    // Si está en Vercel o producción
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return window.location.origin + '/api';
+    }
+    
+    // En desarrollo local
+    return 'http://localhost:3001/api';
+  };
+  
+  const base = getBaseUrl();
   const token = localStorage.getItem('token');
   
   // Debug: Verificar token
   console.log('🔑 Token en localStorage:', token ? 'Presente' : 'Ausente');
+  console.log('🌐 API Base URL:', base);
   
   // Validar que el token exista y no esté expirado
   if (token) {

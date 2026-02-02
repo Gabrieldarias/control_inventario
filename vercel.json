@@ -1,15 +1,8 @@
 {
-  "buildCommand": "node build.js",
-  "devCommand": "vercel dev",
-  "outputDirectory": ".",
+  "outputDirectory": "frontend",
   "functions": {
     "api/**/*.js": {
       "runtime": "nodejs18.x"
-    }
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": true
     }
   }
 }

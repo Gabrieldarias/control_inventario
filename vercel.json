@@ -2,7 +2,6 @@
   "buildCommand": "echo 'Build complete'",
   "devCommand": "vercel dev",
   "outputDirectory": ".",
-  "framework": "vanilla",
   "functions": {
     "api/**/*.js": {
       "runtime": "nodejs18.x"

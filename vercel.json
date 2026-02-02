@@ -8,11 +8,6 @@
       "runtime": "nodejs18.x"
     }
   },
-  "env": {
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_KEY": "@supabase_key",
-    "JWT_SECRET": "@jwt_secret"
-  },
   "git": {
     "deploymentEnabled": {
       "main": true

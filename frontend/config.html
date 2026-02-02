@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Local - Supabase</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .code {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+        .current-values {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border: 1px solid #ffc107;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Configuración Local - Supabase</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Información:</strong><br>
+            Esta página te ayuda a configurar las variables de entorno necesarias para ejecutar la aplicación en desarrollo local.
+            Las variables se guardarán en <code>localStorage</code> del navegador.
+        </div>
+
+        <form id="configForm">
+            <div class="form-group">
+                <label for="supabaseUrl">🌐 SUPABASE_URL</label>
+                <input 
+                    type="text" 
+                    id="supabaseUrl" 
+                    placeholder="https://tu-proyecto.supabase.co"
+                    required
+                />
+                <small style="color: #666;">Obtenerlo en: Supabase Dashboard → Settings → API → Project URL</small>
+            </div>
+
+            <div class="form-group">
+                <label for="supabaseKey">🔑 SUPABASE_ANON_KEY</label>
+                <input 
+                    type="text" 
+                    id="supabaseKey" 
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    required
+                />
+                <small style="color: #666;">Obtenerlo en: Supabase Dashboard → Settings → API → anon public</small>
+            </div>
+
+            <button type="submit">💾 Guardar Configuración</button>
+            <button type="button" class="btn-secondary" onclick="loadCurrent()">📋 Ver Configuración Actual</button>
+            <button type="button" class="btn-danger" onclick="clearConfig()">🗑️ Limpiar Todo</button>
+        </form>
+
+        <div id="status" class="status"></div>
+
+        <div id="currentValues" class="current-values" style="display: none;">
+            <h3>📊 Valores Actuales</h3>
+            <div class="code" id="currentData"></div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+            <h3>📝 Pasos siguientes:</h3>
+            <ol>
+                <li>Completa el formulario arriba con tus credenciales de Supabase</li>
+                <li>Haz clic en "Guardar Configuración"</li>
+                <li>Crea usuarios de prueba en Supabase Auth (ver <code>SUPABASE_AUTH_SETUP.md</code>)</li>
+                <li>Vuelve a la aplicación principal e intenta hacer login</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('configForm');
+        const status = document.getElementById('status');
+
+        // Cargar valores existentes al cargar la página
+        window.addEventListener('load', () => {
+            const url = localStorage.getItem('SUPABASE_URL');
+            const key = localStorage.getItem('SUPABASE_ANON_KEY');
+
+            if (url) document.getElementById('supabaseUrl').value = url;
+            if (key) document.getElementById('supabaseKey').value = key;
+
+            if (url && key) {
+                showStatus('success', '✅ Configuración existente cargada. Puedes modificarla si es necesario.');
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('supabaseKey').value.trim();
+
+            // Validaciones básicas
+            if (!url.startsWith('https://')) {
+                showStatus('error', '❌ La URL debe comenzar con https://');
+                return;
+            }
+
+            if (!key.startsWith('eyJ')) {
+                showStatus('error', '❌ La anon key debe ser un JWT válido (debe comenzar con eyJ)');
+                return;
+            }
+
+            // Guardar en localStorage
+            try {
+                localStorage.setItem('SUPABASE_URL', url);
+                localStorage.setItem('SUPABASE_ANON_KEY', key);
+
+                showStatus('success', `
+                    ✅ ¡Configuración guardada correctamente!<br><br>
+                    <strong>Siguiente paso:</strong><br>
+                    1. Cierra esta pestaña<br>
+                    2. Recarga la aplicación principal<br>
+                    3. Intenta hacer login con un usuario de Supabase
+                `);
+
+                // Mostrar valores actuales
+                loadCurrent();
+
+            } catch (err) {
+                showStatus('error', '❌ Error guardando configuración: ' + err.message);
+            }
+        });
+
+        function showStatus(type, message) {
+            status.className = 'status ' + type;
+            status.innerHTML = message;
+        }
+
+        function loadCurrent() {
+            const url = localStorage.getItem('SUPABASE_URL');
+            const key = localStorage.getItem('SUPABASE_ANON_KEY');
+
+            const currentDiv = document.getElementById('currentValues');
+            const dataDiv = document.getElementById('currentData');
+
+            if (!url || !key) {
+                showStatus('error', '❌ No hay configuración guardada');
+                currentDiv.style.display = 'none';
+                return;
+            }
+
+            currentDiv.style.display = 'block';
+            dataDiv.innerHTML = `
+<strong>SUPABASE_URL:</strong><br>
+${url}<br><br>
+
+<strong>SUPABASE_ANON_KEY:</strong><br>
+${key.substring(0, 50)}...${key.substring(key.length - 10)}<br><br>
+
+<strong>Estado:</strong> ✅ Configurado correctamente
+            `;
+
+            showStatus('success', '✅ Configuración cargada desde localStorage');
+        }
+
+        function clearConfig() {
+            if (!confirm('¿Estás seguro de que quieres eliminar toda la configuración?')) {
+                return;
+            }
+
+            localStorage.removeItem('SUPABASE_URL');
+            localStorage.removeItem('SUPABASE_ANON_KEY');
+
+            document.getElementById('supabaseUrl').value = '';
+            document.getElementById('supabaseKey').value = '';
+            document.getElementById('currentValues').style.display = 'none';
+
+            showStatus('success', '🗑️ Configuración eliminada. Puedes cerrar esta pestaña.');
+        }
+    </script>
+</body>
+</html>

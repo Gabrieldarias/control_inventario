@@ -15,6 +15,9 @@ build/
 .env.local
 .env.*.local
 
+# Frontend environment (producción)
+frontend/env.js
+
 # Database
 *.db
 *.sqlite

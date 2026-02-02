@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tienda POS - MVP</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- React + ReactDOM + Babel para JSX rápido sin build -->
+    <!-- React + ReactDOM (sin Babel) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <!-- Supabase JS SDK desde CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="text/babel" src="app.js"></script>
+    <!-- Cargar configuración de Supabase ANTES de app.js -->
+    <script src="supabaseClient.js"></script>
+    <!-- SIN type="text/babel" - JavaScript nativo -->
+    <script src="app.js"></script>
   </body>
 </html>

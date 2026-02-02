@@ -344,20 +344,44 @@ function Login(props) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
-    api().login(email, password).then(function(res) {
-      localStorage.setItem('token', res.data.token);
-      onLogin();
-    }).catch(function(e) {
-      const msg = getErrorMessage(e);
-      setError(msg);
-    }).finally(function() {
+    try {
+      console.log('🔐 Iniciando login con Supabase Auth...');
+      
+      // Verificar que supabaseAuth esté disponible
+      if (!window.supabaseAuth || !window.supabaseAuth.login) {
+        throw new Error('Supabase Auth no está configurado. Verifica que supabaseClient.js esté cargado.');
+      }
+      
+      // Login con Supabase Auth
+      const result = await window.supabaseAuth.login(email, password);
+      
+      if (result.success) {
+        console.log('✅ Login exitoso');
+        // Guardar token en localStorage
+        localStorage.setItem('token', result.token);
+        
+        // Guardar info del usuario
+        localStorage.setItem('user', JSON.stringify({
+          id: result.user.id,
+          email: result.user.email,
+          role: result.user.user_metadata?.role || 'vendedor'
+        }));
+        
+        onLogin();
+      } else {
+        throw new Error(result.error || 'Error desconocido en login');
+      }
+    } catch (err) {
+      console.error('❌ Error en login:', err.message);
+      setError(err.message);
+    } finally {
       setLoading(false);
-    });
+    }
   }
 
   return React.createElement('div', { className: 'login-container' },

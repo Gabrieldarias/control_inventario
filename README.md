@@ -1,53 +1,127 @@
-# 🎉 SISTEMA TIENDA MVP v2.0 - IMPLEMENTACIÓN COMPLETADA
+# 🎉 SISTEMA TIENDA MVP v2.0 - Vercel Serverless + Supabase
 
-## ⚡ INSTALACIÓN RÁPIDA (Lee esto primero!)
+## ⚡ QUICK START - Desarrollo Local
 
 ```bash
-# 1. Clonar
-git clone https://github.com/tu-usuario/tienda-mvp.git
-cd tienda-mvp/backend
+# 1. Abrir página de configuración
+frontend/config.html
 
-# 2. Instalar
-npm install
+# 2. Completar formulario con credenciales de Supabase:
+#    - NEXT_PUBLIC_SUPABASE_URL
+#    - NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-# 3. Configurar (copiar .env.example a .env)
-cp .env.example .env
+# 3. Abrir la aplicación
+frontend/index.html
 
-# 4. Inicializar base de datos
-npm run init-db
-npm run seed
-
-# 5. Ejecutar
-npm start
-
-# 6. Abrir navegador
-# http://localhost:3001
-
-# Credenciales: admin@example.com / adminpass
+# 4. Login con:
+#    Email: admin@example.com
+#    Password: adminpass
 ```
 
-**¿Error de conexión?** Ver [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+**¿Primera vez?** Lee [QUICK_START_AUTH.md](QUICK_START_AUTH.md) (5 minutos) ⭐
 
 ---
 
-## ✨ Gestión de Inventario Profesional - Todas las Funcionalidades
+## 🚀 Deploy a Vercel (Producción)
 
-Bienvenido al Sistema Tienda MVP v2.0, un sistema completo de gestión de inventario implementado con las **15 funcionalidades solicitadas** totalmente funcionales.
+**Guía completa:** [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) ⭐
+
+### Resumen rápido:
+
+```bash
+# 1. Subir a GitHub
+git add .
+git commit -m "Initial commit"
+git push origin main
+
+# 2. Importar en Vercel desde GitHub
+# Ve a vercel.com/new y selecciona tu repositorio
+
+# 3. Configurar variables de entorno en Vercel Dashboard
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_URL
+SUPABASE_KEY
+JWT_SECRET
+
+# 4. ¡Deploy automático!
+```
+
+Ver [GIT_COMMANDS.md](GIT_COMMANDS.md) para comandos Git detallados.
 
 ---
 
-## 📚 DOCUMENTACIÓN DISPONIBLE
+## ✨ Sistema de Gestión de Inventario Profesional
 
-### 🚀 PARA EMPEZAR
-1. **[GUIA_EJECUCION.md](GUIA_EJECUCION.md)** ⭐ **LEER PRIMERO**
-   - Instrucciones paso a paso
-   - Setup del sistema
-   - Primeros pasos en la app
+Sistema completo de gestión de inventario con arquitectura serverless, autenticación con Supabase Auth, y deployment automatizado en Vercel.
+
+### 🏗️ Arquitectura
+
+**Frontend:**
+- React 18 (CDN - sin build)
+- Vanilla JavaScript
+- Supabase JS SDK 2.x
+- Axios para API calls
+
+**Backend:**
+- Vercel Serverless Functions
+- Node.js 18.x
+- Supabase PostgreSQL
+- JWT Authentication
+
+**Base de Datos:**
+- Supabase PostgreSQL
+- Row Level Security (RLS)
+- Auth integrado
+
+---
+
+## 📚 DOCUMENTACIÓN COMPLETA
+
+### 🔐 AUTENTICACIÓN (NUEVO)
+1. **[QUICK_START_AUTH.md](QUICK_START_AUTH.md)** ⭐ **INICIO RÁPIDO**
+   - Configuración en 5 minutos
+   - Setup de usuarios
    - Troubleshooting
 
-### 📖 DOCUMENTACIÓN PRINCIPAL
-2. **[ESPECIFICACION_FUNCIONAL_INVENTARIO.md](ESPECIFICACION_FUNCIONAL_INVENTARIO.md)**
-   - Especificación completa (70+ páginas)
+2. **[SUPABASE_AUTH_SETUP.md](SUPABASE_AUTH_SETUP.md)**
+   - Guía completa de Supabase Auth
+   - Creación de usuarios
+   - Variables de entorno
+   - Seguridad y RLS
+
+3. **[SUPABASE_AUTH_MIGRATION.md](SUPABASE_AUTH_MIGRATION.md)**
+   - Resumen de cambios
+   - Antes vs Después
+   - Archivos modificados
+
+### 🚀 VERCEL DEPLOYMENT
+4. **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** ⭐ **GUÍA DE DESPLIEGUE**
+   - Paso a paso: GitHub + Vercel
+   - Configuración de variables
+   - Troubleshooting producción
+
+5. **[GIT_COMMANDS.md](GIT_COMMANDS.md)**
+   - Comandos Git esenciales
+   - Primer push a GitHub
+   - Actualizaciones futuras
+
+6. **[NO_BABEL_SETUP.md](NO_BABEL_SETUP.md)**
+   - Arquitectura sin Babel
+   - SDK desde CDN
+   - Debugging
+
+7. **[VERCEL_MIGRATION.md](VERCEL_MIGRATION.md)**
+   - Migración a Serverless
+   - Arquitectura completa
+   - Funciones API
+
+8. **[QUICK_COMMANDS.md](QUICK_COMMANDS.md)**
+   - Comandos CLI útiles
+   - npm scripts
+   - Vercel commands
+
+### 📖 FUNCIONALIDADES
    - Descripción de cada funcionalidad
    - Casos de uso
    - Requisitos

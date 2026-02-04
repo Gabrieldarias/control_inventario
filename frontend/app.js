@@ -152,8 +152,11 @@ function api() {
     eliminarCompra: (id) => axiosInstance.delete('/inventory/compras/' + id),
     
     // Devoluciones
-    crearDevolucion: (data) => axiosInstance.post('/devoluciones', data),
-    listarDevoluciones: (filtros) => axiosInstance.get('/devoluciones', { params: filtros }),
+    crearDevolucion: (data) => axiosInstance.post('/inventory/devoluciones', data),
+    listarDevoluciones: (filtros) => axiosInstance.get('/inventory/devoluciones', { params: filtros }),
+    obtenerDevolucion: (id) => axiosInstance.get('/inventory/devoluciones', { params: { id } }),
+    actualizarDevolucion: (id, data) => axiosInstance.put('/inventory/devoluciones', { ...data, id }),
+    eliminarDevolucion: (id) => axiosInstance.delete('/inventory/devoluciones', { params: { id } }),
     
     // Usuarios
     listarUsuarios: () => axiosInstance.get('/usuarios'),
@@ -2309,18 +2312,18 @@ function GestionCompras() {
 
 function GestionDevoluciones() {
   const [devoluciones, setDevoluciones] = useState([]);
-  const [productos, setProductos] = useState([]);
+  const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [detalleDevolucion, setDetalleDevolucion] = useState(null);
   
   const [formData, setFormData] = useState({
-    tipo: 'cliente',
-    referencia_original: '',
+    venta_id: '',
     motivo: '',
     items: []
   });
-  const [itemForm, setItemForm] = useState({ producto_id: '', cantidad: '', precio: '' });
+  const [itemForm, setItemForm] = useState({ producto_id: '', cantidad: '', precio_unitario: '' });
 
   useEffect(function() {
     cargarDatos();
@@ -2330,26 +2333,34 @@ function GestionDevoluciones() {
     setLoading(true);
     Promise.all([
       api().listarDevoluciones({}),
-      api().getProductos({ estado: true })
+      api().listarVentas({})
     ]).then(function(resultados) {
-      setDevoluciones(resultados[0].data);
-      setProductos(resultados[1].data);
+      setDevoluciones(resultados[0].data || []);
+      setVentas(resultados[1].data || []);
       setError(null);
       setLoading(false);
     }).catch(function(e) {
-      setError('Error al cargar datos');
+      setError('Error al cargar datos: ' + getErrorMessage(e));
       setLoading(false);
     });
   }
 
   function agregarItem() {
-    if (!itemForm.producto_id || !itemForm.cantidad) {
-      setError('Complete los campos del producto');
+    if (!itemForm.producto_id || !itemForm.cantidad || !itemForm.precio_unitario) {
+      setError('Complete todos los campos del producto');
       return;
     }
-    const nuevoItem = Object.assign({}, itemForm, { id: Date.now() });
+    const cantidad = parseInt(itemForm.cantidad);
+    const precio = parseFloat(itemForm.precio_unitario);
+    const nuevoItem = {
+      id: Date.now(),
+      producto_id: itemForm.producto_id,
+      cantidad: cantidad,
+      precio_unitario: precio,
+      subtotal: cantidad * precio
+    };
     setFormData(Object.assign({}, formData, { items: formData.items.concat([nuevoItem]) }));
-    setItemForm({ producto_id: '', cantidad: '', precio: '' });
+    setItemForm({ producto_id: '', cantidad: '', precio_unitario: '' });
   }
 
   function quitarItem(id) {
@@ -2358,45 +2369,74 @@ function GestionDevoluciones() {
 
   function guardarDevolucion(e) {
     e.preventDefault();
+    if (!formData.venta_id) {
+      setError('Seleccione una venta');
+      return;
+    }
     if (formData.items.length === 0) {
-      setError('Agregue al menos un producto');
+      setError('Agregue al menos un producto a devolver');
       return;
     }
     
     api().crearDevolucion(formData).then(function() {
       cargarDatos();
       setShowModal(false);
-      setFormData({ tipo: 'cliente', referencia_original: '', motivo: '', items: [] });
+      setFormData({ venta_id: '', motivo: '', items: [] });
       setError(null);
     }).catch(function(e) {
-      setError('Error: ' + getErrorMessage(e));
+      setError('Error al crear devolución: ' + getErrorMessage(e));
     });
   }
 
-  const productosOpts = productos.map(function(p) {
-    return React.createElement('option', { key: p.id, value: p.id }, p.nombre);
+  function eliminarDevolucion(id) {
+    if (confirm('¿Está seguro que desea eliminar esta devolución?')) {
+      api().eliminarDevolucion(id).then(function() {
+        cargarDatos();
+      }).catch(function(e) {
+        setError('Error al eliminar: ' + getErrorMessage(e));
+      });
+    }
+  }
+
+  function verDetalle(id) {
+    api().obtenerDevolucion(id).then(function(res) {
+      setDetalleDevolucion(res.data);
+    }).catch(function(e) {
+      setError('Error al cargar detalle: ' + getErrorMessage(e));
+    });
+  }
+
+  const ventasOpts = ventas.map(function(v) {
+    const cliente = v.customers ? v.customers.nombre : 'Sin cliente';
+    return React.createElement('option', { key: v.id, value: v.id }, 'Venta ' + v.id.substring(0, 8) + ' - ' + cliente);
   });
 
   const itemsRows = formData.items.map(function(item) {
-    const producto = productos.find(function(p) { return p.id == item.producto_id; });
     return React.createElement('tr', { key: item.id },
-      React.createElement('td', null, producto ? producto.nombre : '-'),
+      React.createElement('td', null, item.producto_id.substring(0, 8)),
       React.createElement('td', null, item.cantidad),
-      React.createElement('td', null, '$' + (item.precio || 0)),
-      React.createElement('td', null, '$' + (item.cantidad * (item.precio || 0)).toFixed(2)),
+      React.createElement('td', null, '$' + parseFloat(item.precio_unitario).toFixed(2)),
+      React.createElement('td', null, '$' + parseFloat(item.subtotal).toFixed(2)),
       React.createElement('td', null,
-        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { quitarItem(item.id); } }, 'Eliminar')
+        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { quitarItem(item.id); }, type: 'button' }, 'Quitar')
       )
     );
   });
 
   const devolucionesRows = devoluciones.map(function(d) {
+    const cliente = d.sales && d.sales.customers ? d.sales.customers.nombre : 'Sin cliente';
     return React.createElement('tr', { key: d.id },
-      React.createElement('td', null, d.numero_devolucion || '-'),
-      React.createElement('td', null, d.tipo),
-      React.createElement('td', null, new Date(d.fecha).toLocaleDateString()),
+      React.createElement('td', null, d.id.substring(0, 8)),
+      React.createElement('td', null, cliente),
+      React.createElement('td', null, new Date(d.created_at).toLocaleDateString()),
       React.createElement('td', null, '$' + parseFloat(d.total || 0).toFixed(2)),
-      React.createElement('td', null, d.motivo || '-')
+      React.createElement('td', null, d.estado),
+      React.createElement('td', null, d.motivo || '-'),
+      React.createElement('td', null,
+        React.createElement('button', { className: 'btn btn-small btn-info', onClick: function() { verDetalle(d.id); } }, 'Ver'),
+        ' ',
+        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { eliminarDevolucion(d.id); } }, 'Eliminar')
+      )
     );
   });
 
@@ -2405,7 +2445,8 @@ function GestionDevoluciones() {
       React.createElement('h2', null, '↩️ Gestión de Devoluciones'),
       React.createElement('button', { className: 'btn btn-success', onClick: function() {
         setShowModal(true);
-        setFormData({ tipo: 'cliente', referencia_original: '', motivo: '', items: [] });
+        setFormData({ venta_id: '', motivo: '', items: [] });
+        setError(null);
       }}, '+ Nueva Devolución')
     ),
     error && React.createElement(AlertBox, { tipo: 'danger', mensaje: error }),
@@ -2414,11 +2455,13 @@ function GestionDevoluciones() {
       React.createElement('table', { className: 'table' },
         React.createElement('thead', null,
           React.createElement('tr', null,
-            React.createElement('th', null, 'N° Devolución'),
-            React.createElement('th', null, 'Tipo'),
+            React.createElement('th', null, 'ID'),
+            React.createElement('th', null, 'Cliente'),
             React.createElement('th', null, 'Fecha'),
             React.createElement('th', null, 'Total'),
-            React.createElement('th', null, 'Motivo')
+            React.createElement('th', null, 'Estado'),
+            React.createElement('th', null, 'Motivo'),
+            React.createElement('th', null, 'Acciones')
           )
         ),
         React.createElement('tbody', null, devolucionesRows)
@@ -2430,24 +2473,16 @@ function GestionDevoluciones() {
     },
       React.createElement('form', { onSubmit: guardarDevolucion },
         React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, 'Tipo de Devolución *'),
+          React.createElement('label', null, 'Venta *'),
           React.createElement('select', { 
             className: 'input',
-            value: formData.tipo,
-            onChange: function(e) { setFormData(Object.assign({}, formData, { tipo: e.target.value })); }
+            value: formData.venta_id,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { venta_id: e.target.value })); },
+            required: true
           },
-            React.createElement('option', { value: 'cliente' }, 'Devolución Cliente'),
-            React.createElement('option', { value: 'proveedor' }, 'Devolución Proveedor')
+            React.createElement('option', { value: '' }, 'Seleccione una venta...'),
+            ventasOpts
           )
-        ),
-        React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, 'Referencia Original'),
-          React.createElement('input', { 
-            className: 'input',
-            value: formData.referencia_original,
-            onChange: function(e) { setFormData(Object.assign({}, formData, { referencia_original: e.target.value })); },
-            placeholder: 'N° Venta o Compra'
-          })
         ),
         React.createElement('div', { className: 'form-group' },
           React.createElement('label', null, 'Motivo'),
@@ -2455,19 +2490,18 @@ function GestionDevoluciones() {
             className: 'input',
             value: formData.motivo,
             onChange: function(e) { setFormData(Object.assign({}, formData, { motivo: e.target.value })); },
+            placeholder: 'Razón de la devolución',
             rows: 3
           })
         ),
-        React.createElement('h4', null, 'Productos'),
+        React.createElement('h4', null, 'Productos a devolver'),
         React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', marginBottom: '15px' } },
-          React.createElement('select', { 
+          React.createElement('input', { 
             className: 'input',
+            placeholder: 'Producto ID',
             value: itemForm.producto_id,
             onChange: function(e) { setItemForm(Object.assign({}, itemForm, { producto_id: e.target.value })); }
-          },
-            React.createElement('option', { value: '' }, 'Producto...'),
-            productosOpts
-          ),
+          }),
           React.createElement('input', { 
             className: 'input',
             type: 'number',
@@ -2479,9 +2513,9 @@ function GestionDevoluciones() {
             className: 'input',
             type: 'number',
             step: '0.01',
-            placeholder: 'Precio',
-            value: itemForm.precio,
-            onChange: function(e) { setItemForm(Object.assign({}, itemForm, { precio: e.target.value })); }
+            placeholder: 'Precio unitario',
+            value: itemForm.precio_unitario,
+            onChange: function(e) { setItemForm(Object.assign({}, itemForm, { precio_unitario: e.target.value })); }
           }),
           React.createElement('button', { className: 'btn btn-primary', type: 'button', onClick: agregarItem }, 'Agregar')
         ),
@@ -2497,7 +2531,41 @@ function GestionDevoluciones() {
           ),
           React.createElement('tbody', null, itemsRows)
         ),
-        React.createElement('button', { className: 'btn btn-primary btn-large', type: 'submit' }, 'Guardar Devolución')
+        React.createElement('div', { style: { marginTop: '15px', fontSize: '16px', fontWeight: 'bold' } },
+          'Total: $' + formData.items.reduce(function(sum, item) { return sum + (item.subtotal || 0); }, 0).toFixed(2)
+        ),
+        React.createElement('button', { className: 'btn btn-success btn-large', type: 'submit', style: { marginTop: '15px' } }, 'Guardar Devolución')
+      )
+    ),
+    detalleDevolucion && React.createElement(Modal, { 
+      titulo: 'Detalle de Devolución',
+      onClose: function() { setDetalleDevolucion(null); }
+    },
+      React.createElement('div', null,
+        React.createElement('p', null, React.createElement('strong', null, 'ID:'), ' ' + detalleDevolucion.id),
+        React.createElement('p', null, React.createElement('strong', null, 'Total:'), ' $' + parseFloat(detalleDevolucion.total || 0).toFixed(2)),
+        React.createElement('p', null, React.createElement('strong', null, 'Estado:'), ' ' + detalleDevolucion.estado),
+        React.createElement('p', null, React.createElement('strong', null, 'Motivo:'), ' ' + (detalleDevolucion.motivo || '-')),
+        React.createElement('h4', null, 'Productos'),
+        detalleDevolucion.return_items && React.createElement('table', { className: 'table' },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', null, 'Producto'),
+              React.createElement('th', null, 'Cantidad'),
+              React.createElement('th', null, 'Precio'),
+              React.createElement('th', null, 'Subtotal')
+            )
+          ),
+          React.createElement('tbody', null, (detalleDevolucion.return_items || []).map(function(item) {
+            const nomProducto = item.products ? item.products.nombre : 'Producto desconocido';
+            return React.createElement('tr', { key: item.id },
+              React.createElement('td', null, nomProducto),
+              React.createElement('td', null, item.cantidad),
+              React.createElement('td', null, '$' + parseFloat(item.precio_unitario).toFixed(2)),
+              React.createElement('td', null, '$' + parseFloat(item.subtotal).toFixed(2))
+            );
+          }))
+        )
       )
     )
   );

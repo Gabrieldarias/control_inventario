@@ -126,9 +126,6 @@ function api() {
     registrarMovimiento: (data) => axiosInstance.post('/inventory/movimientos', data),
     getMovimientos: (filtros) => axiosInstance.get('/inventory/movimientos', { params: filtros }),
     
-    getAlertas: (filtros) => axiosInstance.get('/inventory/alertas', { params: filtros }),
-    resolverAlerta: (id) => axiosInstance.put('/inventory/alertas/' + id + '/resolver', {}),
-    
     actualizarPrecio: (productoId, data) => axiosInstance.put('/inventory/productos/' + productoId + '/precio', data),
     getHistorialPrecios: (productoId) => axiosInstance.get('/inventory/productos/' + productoId + '/historial-precios'),
     
@@ -322,7 +319,6 @@ function Sidebar(props) {
         { id: 'compras', label: 'Compras', icon: '📥', roles: ['admin', 'administrador'] },
         { id: 'reportes', label: 'Reportes', icon: '📊', roles: ['admin', 'administrador'] },
         { id: 'movimientos', label: 'Movimientos', icon: '📈', roles: ['admin', 'administrador'] },
-        // { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin', 'administrador'] }, // Oculto temporalmente
         { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin', 'administrador'] },
         { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin', 'administrador'] }
       );
@@ -1957,85 +1953,6 @@ function GestionMovimientos() {
   );
 }
 
-// ===== ALERTAS =====
-
-function GestionAlertas() {
-  const [alertas, setAlertas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [filtroEstado, setFiltroEstado] = useState('pendiente');
-
-  useEffect(function() {
-    cargarAlertas();
-  }, [filtroEstado]);
-
-  function cargarAlertas() {
-    setLoading(true);
-    api().getAlertas({ estado: filtroEstado }).then(function(res) {
-      setAlertas(res.data);
-      setError(null);
-      setLoading(false);
-    }).catch(function(e) {
-      setError('Error al cargar alertas');
-      setLoading(false);
-    });
-  }
-
-  function resolver(id) {
-    api().resolverAlerta(id).then(function() {
-      cargarAlertas();
-    }).catch(function(e) {
-      setError('Error: ' + getErrorMessage(e));
-    });
-  }
-
-  const alertasRows = alertas.map(function(a) {
-    return React.createElement('tr', { key: a.id },
-      React.createElement('td', null, a.tipo),
-      React.createElement('td', null, a.descripcion),
-      React.createElement('td', null, React.createElement('span', { className: 'badge badge-' + (a.severidad === 'alta' ? 'danger' : a.severidad === 'media' ? 'warning' : 'info') }, a.severidad)),
-      React.createElement('td', null, new Date(a.fecha_creacion).toLocaleDateString()),
-      React.createElement('td', null, React.createElement('span', { className: 'badge badge-' + (a.estado === 'pendiente' ? 'danger' : 'success') }, a.estado)),
-      React.createElement('td', null,
-        a.estado === 'pendiente' && React.createElement('button', { className: 'btn btn-small btn-success', onClick: function() { resolver(a.id); } }, 'Resolver')
-      )
-    );
-  });
-
-  return React.createElement('div', { className: 'panel' },
-    React.createElement('div', { className: 'panel-header' },
-      React.createElement('h2', null, '🔔 Alertas')
-    ),
-    error && React.createElement(AlertBox, { tipo: 'danger', mensaje: error }),
-    React.createElement('div', { className: 'form-group' },
-      React.createElement('label', null, 'Filtrar:'),
-      React.createElement('select', { 
-        className: 'input',
-        value: filtroEstado,
-        onChange: function(e) { setFiltroEstado(e.target.value); }
-      },
-        React.createElement('option', { value: 'pendiente' }, 'Pendientes'),
-        React.createElement('option', { value: 'resuelto' }, 'Resueltas'),
-        React.createElement('option', { value: '' }, 'Todas')
-      )
-    ),
-    loading && React.createElement('div', { className: 'spinner' }, 'Cargando...'),
-    !loading && React.createElement('table', { className: 'table' },
-      React.createElement('thead', null,
-        React.createElement('tr', null,
-          React.createElement('th', null, 'Tipo'),
-          React.createElement('th', null, 'Descripción'),
-          React.createElement('th', null, 'Severidad'),
-          React.createElement('th', null, 'Fecha'),
-          React.createElement('th', null, 'Estado'),
-          React.createElement('th', null, 'Acciones')
-        )
-      ),
-      React.createElement('tbody', null, alertasRows)
-    )
-  );
-}
-
 // ===== VENTAS / PUNTO DE VENTA =====
 
 function Ventas() {
@@ -3431,9 +3348,6 @@ function App() {
         ),
         tabActiva === 'movimientos' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
           React.createElement(GestionMovimientos, null)
-        ),
-        tabActiva === 'alertas' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
-          React.createElement(GestionAlertas, null)
         ),
         tabActiva === 'usuarios' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
           React.createElement(GestionUsuarios, null)

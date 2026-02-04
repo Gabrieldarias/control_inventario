@@ -1,5 +1,4 @@
-import { supabase, setCorsHeaders } from '../../utils';
-import { requireAuth } from '../../middleware/auth';
+import { supabase, setCorsHeaders } from '../utils.js';
 
 async function handler(req, res) {
   setCorsHeaders(res);
@@ -23,4 +22,4 @@ async function handler(req, res) {
   }
 }
 
-export default requireAuth(handler);
+export default handler;

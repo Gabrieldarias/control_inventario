@@ -211,11 +211,16 @@ function ProtectedRoute(props) {
 // Función para verificar permisos
 function tienePermiso(usuario, modulo) {
   if (!usuario) return false;
-  if (usuario.role === 'admin') return true; // Admin tiene acceso a todo
+  
+  // Normalizar el rol (admin/administrador)
+  const role = usuario.role || usuario.rol || '';
+  const isAdmin = role === 'admin' || role === 'administrador';
+  
+  if (isAdmin) return true; // Admin tiene acceso a todo
   
   // Vendedor solo acceso a: ventas, devoluciones
   const modulosVendedor = ['ventas', 'devoluciones'];
-  if (usuario.role === 'vendedor') {
+  if (role === 'vendedor') {
     return modulosVendedor.includes(modulo);
   }
   
@@ -2753,8 +2758,10 @@ function App() {
             title: 'Abrir menú'
           }, '☰'),
           React.createElement('h2', null, usuario.nombre || usuario.name || 'Usuario'),
-          React.createElement('span', { className: 'role-badge ' + (usuario.role === 'admin' ? 'badge-admin' : 'badge-vendedor') }, 
-            usuario.role === 'admin' ? 'ADMIN' : 'VENDEDOR'
+          React.createElement('span', { 
+            className: 'role-badge ' + ((usuario.role === 'admin' || usuario.role === 'administrador') ? 'badge-admin' : 'badge-vendedor') 
+          }, 
+            (usuario.role === 'admin' || usuario.role === 'administrador') ? 'ADMIN' : 'VENDEDOR'
           )
         ),
         React.createElement('div', { className: 'alert alert-danger', style: { margin: '20px' } },

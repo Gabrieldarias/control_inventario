@@ -174,8 +174,8 @@ function api() {
     // Usuarios
     listarUsuarios: () => axiosInstance.get('/usuarios'),
     crearUsuario: (data) => axiosInstance.post('/usuarios', data),
-    actualizarUsuario: (id, data) => axiosInstance.put('/usuarios/' + id, data),
-    eliminarUsuario: (id) => axiosInstance.delete('/usuarios/' + id),
+    actualizarUsuario: (id, data) => axiosInstance.put('/usuarios?id=' + id, data),
+    eliminarUsuario: (id) => axiosInstance.delete('/usuarios?id=' + id),
     
     // Configuración
     getConfiguracion: () => axiosInstance.get('/configuracion'),

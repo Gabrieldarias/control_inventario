@@ -70,7 +70,8 @@ function api() {
         return {};
       }
     } else {
-      console.warn('⚠️ Token inválido. No se pudo decodificar.');
+      // Token simple sin expiración (formato base64 simple)
+      console.log('ℹ️ Token simple detectado (sin expiración).');
     }
   } else {
     console.warn('⚠️ No hay token en localStorage.');

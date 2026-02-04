@@ -158,6 +158,11 @@ function api() {
     actualizarDevolucion: (id, data) => axiosInstance.put('/inventory/devoluciones', { ...data, id }),
     eliminarDevolucion: (id) => axiosInstance.delete('/inventory/devoluciones', { params: { id } }),
     
+    // Movimientos
+    listarMovimientos: (filtros) => axiosInstance.get('/inventory/movimientos', { params: filtros }),
+    obtenerMovimiento: (id) => axiosInstance.get('/inventory/movimientos', { params: { id } }),
+    crearMovimiento: (data) => axiosInstance.post('/inventory/movimientos', data),
+    
     // Usuarios
     listarUsuarios: () => axiosInstance.get('/usuarios'),
     crearUsuario: (data) => axiosInstance.post('/usuarios', data),
@@ -305,6 +310,7 @@ function Sidebar(props) {
         { id: 'proveedores', label: 'Proveedores', icon: '🏭', roles: ['admin', 'administrador'] },
         { id: 'compras', label: 'Compras', icon: '📥', roles: ['admin', 'administrador'] },
         { id: 'reportes', label: 'Reportes', icon: '📊', roles: ['admin', 'administrador'] },
+        { id: 'movimientos', label: 'Movimientos', icon: '📈', roles: ['admin', 'administrador'] },
         { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin', 'administrador'] },
         { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin', 'administrador'] },
         { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin', 'administrador'] }
@@ -1726,6 +1732,215 @@ function Reportes() {
             style: { marginLeft: '10px' }
           }, 'Cerrar')
         )
+      )
+    )
+  );
+}
+
+// ===== MOVIMIENTOS DE INVENTARIO =====
+
+function GestionMovimientos() {
+  const [movimientos, setMovimientos] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroProducto, setFiltroProducto] = useState('');
+  const [showModal, setShowModal] = useState(false);
+
+  const [formData, setFormData] = useState({
+    producto_id: '',
+    tipo: 'entrada',
+    cantidad: '',
+    motivo: '',
+    usuario_email: 'sistema'
+  });
+
+  useEffect(function() {
+    cargarDatos();
+  }, [filtroTipo, filtroProducto]);
+
+  function cargarDatos() {
+    setLoading(true);
+    Promise.all([
+      api().listarMovimientos({ tipo: filtroTipo || undefined, producto_id: filtroProducto || undefined }),
+      api().getProductos({ estado: true })
+    ]).then(function(resultados) {
+      setMovimientos(resultados[0].data || []);
+      setProductos(resultados[1].data || []);
+      setError(null);
+      setLoading(false);
+    }).catch(function(e) {
+      setError('Error al cargar datos: ' + getErrorMessage(e));
+      setLoading(false);
+    });
+  }
+
+  function guardarMovimiento(e) {
+    e.preventDefault();
+    if (!formData.producto_id || !formData.cantidad) {
+      setError('Complete todos los campos requeridos');
+      return;
+    }
+
+    api().crearMovimiento(formData).then(function() {
+      cargarDatos();
+      setShowModal(false);
+      setFormData({
+        producto_id: '',
+        tipo: 'entrada',
+        cantidad: '',
+        motivo: '',
+        usuario_email: 'sistema'
+      });
+      setError(null);
+    }).catch(function(e) {
+      setError('Error al crear movimiento: ' + getErrorMessage(e));
+    });
+  }
+
+  const tiposMovimiento = [
+    { valor: 'entrada', label: 'Entrada de Stock' },
+    { valor: 'salida', label: 'Salida de Stock' },
+    { valor: 'venta', label: 'Venta' },
+    { valor: 'compra', label: 'Compra' },
+    { valor: 'devolucion', label: 'Devolución Cliente' },
+    { valor: 'devolucion_cancelada', label: 'Devolución Cancelada' },
+    { valor: 'lote', label: 'Lote Creado' },
+    { valor: 'ajuste', label: 'Ajuste Manual' }
+  ];
+
+  const productosOpts = productos.map(function(p) {
+    return React.createElement('option', { key: p.id, value: p.id }, p.nombre + ' (' + p.codigo_interno + ')');
+  });
+
+  const tiposOpts = tiposMovimiento.map(function(t) {
+    return React.createElement('option', { key: t.valor, value: t.valor }, t.label);
+  });
+
+  const movimientosRows = movimientos.map(function(m) {
+    const producto = m.products ? m.products.nombre : 'Producto desconocido';
+    const iconoTipo = {
+      'entrada': '📥',
+      'salida': '📤',
+      'venta': '💰',
+      'compra': '🛒',
+      'devolucion': '↩️',
+      'lote': '📦',
+      'ajuste': '⚙️'
+    }[m.tipo] || '•';
+
+    return React.createElement('tr', { key: m.id },
+      React.createElement('td', null, iconoTipo + ' ' + m.tipo),
+      React.createElement('td', null, producto),
+      React.createElement('td', null, m.cantidad + ' ud'),
+      React.createElement('td', null, new Date(m.created_at).toLocaleDateString()),
+      React.createElement('td', null, m.usuario_email || '-'),
+      React.createElement('td', null, m.motivo || '-')
+    );
+  });
+
+  return React.createElement('div', { className: 'panel' },
+    React.createElement('div', { className: 'panel-header' },
+      React.createElement('h2', null, '📊 Historial de Movimientos'),
+      React.createElement('button', { className: 'btn btn-success', onClick: function() {
+        setShowModal(true);
+        setError(null);
+      }}, '+ Nuevo Movimiento')
+    ),
+    error && React.createElement(AlertBox, { tipo: 'danger', mensaje: error }),
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' } },
+      React.createElement('div', { className: 'form-group' },
+        React.createElement('label', null, 'Filtrar por Tipo:'),
+        React.createElement('select', { 
+          className: 'input',
+          value: filtroTipo,
+          onChange: function(e) { setFiltroTipo(e.target.value); }
+        },
+          React.createElement('option', { value: '' }, 'Todos los tipos'),
+          tiposOpts
+        )
+      ),
+      React.createElement('div', { className: 'form-group' },
+        React.createElement('label', null, 'Filtrar por Producto:'),
+        React.createElement('select', { 
+          className: 'input',
+          value: filtroProducto,
+          onChange: function(e) { setFiltroProducto(e.target.value); }
+        },
+          React.createElement('option', { value: '' }, 'Todos los productos'),
+          productosOpts
+        )
+      )
+    ),
+    loading && React.createElement('div', { className: 'spinner' }, 'Cargando...'),
+    !loading && React.createElement('div', null,
+      React.createElement('p', null, 'Total movimientos: ' + movimientos.length),
+      React.createElement('table', { className: 'table' },
+        React.createElement('thead', null,
+          React.createElement('tr', null,
+            React.createElement('th', null, 'Tipo'),
+            React.createElement('th', null, 'Producto'),
+            React.createElement('th', null, 'Cantidad'),
+            React.createElement('th', null, 'Fecha'),
+            React.createElement('th', null, 'Usuario'),
+            React.createElement('th', null, 'Motivo')
+          )
+        ),
+        React.createElement('tbody', null, movimientosRows)
+      )
+    ),
+    showModal && React.createElement(Modal, { 
+      titulo: 'Nuevo Movimiento de Inventario',
+      onClose: function() { setShowModal(false); }
+    },
+      React.createElement('form', { onSubmit: guardarMovimiento },
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Producto *'),
+          React.createElement('select', { 
+            className: 'input',
+            value: formData.producto_id,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { producto_id: e.target.value })); },
+            required: true
+          },
+            React.createElement('option', { value: '' }, 'Seleccione un producto...'),
+            productosOpts
+          )
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Tipo de Movimiento *'),
+          React.createElement('select', { 
+            className: 'input',
+            value: formData.tipo,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { tipo: e.target.value })); },
+            required: true
+          },
+            tiposOpts
+          )
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Cantidad *'),
+          React.createElement('input', { 
+            className: 'input',
+            type: 'number',
+            min: '1',
+            value: formData.cantidad,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { cantidad: e.target.value })); },
+            placeholder: 'Cantidad',
+            required: true
+          })
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Motivo'),
+          React.createElement('textarea', { 
+            className: 'input',
+            value: formData.motivo,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { motivo: e.target.value })); },
+            placeholder: 'Razón del movimiento',
+            rows: 3
+          })
+        ),
+        React.createElement('button', { className: 'btn btn-success btn-large', type: 'submit' }, 'Guardar Movimiento')
       )
     )
   );
@@ -3198,6 +3413,9 @@ function App() {
         ),
         tabActiva === 'reportes' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
           React.createElement(Reportes, null)
+        ),
+        tabActiva === 'movimientos' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
+          React.createElement(GestionMovimientos, null)
         ),
         tabActiva === 'alertas' && React.createElement(ProtectedRoute, { usuario: usuario, roles: ['admin'] },
           React.createElement(GestionAlertas, null)

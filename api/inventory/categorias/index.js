@@ -1,4 +1,4 @@
-import { supabase, setCorsHeaders } from '../../utils.js';
+import { supabase, setCorsHeaders } from '../../../lib/utils.js';
 
 async function handler(req, res) {
   setCorsHeaders(res);

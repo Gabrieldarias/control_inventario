@@ -367,17 +367,41 @@ function Login(props) {
       
       if (result.success) {
         console.log('✅ Login exitoso');
-        // Guardar token en localStorage
-        localStorage.setItem('token', result.token);
         
-        // Guardar info del usuario
-        localStorage.setItem('user', JSON.stringify({
-          id: result.user.id,
-          email: result.user.email,
-          role: result.user.user_metadata?.role || 'vendedor'
-        }));
+        // Obtener información del usuario desde la tabla users
+        const userEmail = result.user.email;
+        console.log('📧 Consultando rol para:', userEmail);
         
-        onLogin();
+        if (window.supabaseClient) {
+          const { data: userData, error: userError } = await window.supabaseClient
+            .from('users')
+            .select('role, name')
+            .eq('email', userEmail)
+            .single();
+            
+          if (!userError && userData) {
+            console.log('✅ Rol encontrado:', userData.role);
+            
+            // Guardar token en localStorage (con rol incluido)
+            const tokenData = {
+              id: result.user.id,
+              email: result.user.email,
+              nombre: userData.name || result.user.email,
+              role: userData.role || 'vendedor'
+            };
+            
+            // Crear token simulado con la info del usuario
+            const fakeToken = btoa(JSON.stringify(tokenData));
+            localStorage.setItem('token', fakeToken);
+            
+            console.log('✅ Usuario autenticado:', tokenData);
+            onLogin();
+          } else {
+            throw new Error('No se encontró información del usuario en la base de datos');
+          }
+        } else {
+          throw new Error('Cliente de Supabase no disponible');
+        }
       } else {
         throw new Error(result.error || 'Error desconocido en login');
       }
@@ -2715,6 +2739,8 @@ function App() {
     if (loggedIn) {
       const token = localStorage.getItem('token');
       const decoded = decodeToken(token);
+      console.log('🔍 Usuario decodificado del token:', decoded);
+      console.log('🎭 Rol del usuario:', decoded?.role || decoded?.rol || 'NO ENCONTRADO');
       setUsuario(decoded);
     }
   }, [loggedIn]);

@@ -1,5 +1,4 @@
-import { supabase, setCorsHeaders } from '../../utils';
-import { requireAuth, requireRole } from '../../middleware/auth';
+import { supabase, setCorsHeaders } from '../../utils.js';
 
 async function handler(req, res) {
   setCorsHeaders(res);
@@ -37,4 +36,4 @@ async function handler(req, res) {
   }
 }
 
-export default requireRole(['admin'])(handler);
+export default handler;

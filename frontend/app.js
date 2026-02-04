@@ -375,7 +375,7 @@ function Login(props) {
         if (window.supabaseClient) {
           const { data: userData, error: userError } = await window.supabaseClient
             .from('users')
-            .select('role, name')
+            .select('role')
             .eq('email', userEmail)
             .single();
             
@@ -386,7 +386,7 @@ function Login(props) {
             const tokenData = {
               id: result.user.id,
               email: result.user.email,
-              nombre: userData.name || result.user.email,
+              nombre: result.user.email,
               role: userData.role || 'vendedor'
             };
             

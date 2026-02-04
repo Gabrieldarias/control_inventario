@@ -283,6 +283,9 @@ function Sidebar(props) {
   
   // Menú items basado en rol
   const getMenuItems = function() {
+    console.log('📋 getMenuItems() - usuario:', usuario);
+    console.log('📋 getMenuItems() - usuario.role:', usuario?.role);
+    
     const items = [
       { id: 'ventas', label: 'Ventas', icon: '💰', roles: ['admin', 'administrador', 'vendedor'] },
       { id: 'devoluciones', label: 'Devoluciones', icon: '↩️', roles: ['admin', 'administrador', 'vendedor'] }
@@ -291,7 +294,11 @@ function Sidebar(props) {
     const userRole = usuario && (usuario.role || usuario.rol || '');
     const isAdmin = userRole === 'admin' || userRole === 'administrador';
     
+    console.log('📋 userRole:', userRole);
+    console.log('📋 isAdmin:', isAdmin);
+    
     if (usuario && isAdmin) {
+      console.log('✅ Agregando menús de admin');
       items.push(
         { id: 'productos', label: 'Productos', icon: '📦', roles: ['admin', 'administrador'] },
         { id: 'categorias', label: 'Categorías', icon: '📂', roles: ['admin', 'administrador'] },
@@ -303,8 +310,11 @@ function Sidebar(props) {
         { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin', 'administrador'] },
         { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin', 'administrador'] }
       );
+    } else {
+      console.log('⚠️ No se agregaron menús de admin. Usuario:', usuario);
     }
     
+    console.log('📋 Items finales:', items.length);
     return items;
   };
   

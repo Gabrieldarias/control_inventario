@@ -7,8 +7,28 @@ async function handler(req, res) {
     return res.status(200).end();
   }
 
+  const { id } = req.query;
+
   try {
+    // GET lista de lotes o lote específico
     if (req.method === 'GET') {
+      // Si tiene ID, obtiene lote específico
+      if (id) {
+        const { data, error } = await supabase
+          .from('lotes')
+          .select('*, products(nombre)')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching lote:', error);
+          return res.status(404).json({ error: 'Lote no encontrado' });
+        }
+
+        return res.status(200).json(data);
+      }
+
+      // Si no tiene ID, lista lotes por producto
       const { producto_id } = req.query;
 
       if (!producto_id) {
@@ -30,6 +50,7 @@ async function handler(req, res) {
       return res.status(200).json(data || []);
     }
 
+    // POST crear nuevo lote
     if (req.method === 'POST') {
       const { producto_id, numero_lote, cantidad, fecha_vencimiento, precio_costo } = req.body;
 
@@ -82,6 +103,55 @@ async function handler(req, res) {
         }]);
 
       return res.status(201).json(lote);
+    }
+
+    // PUT actualizar lote
+    if (req.method === 'PUT') {
+      if (!id) {
+        return res.status(400).json({ error: 'ID requerido para actualizar' });
+      }
+
+      const { numero_lote, cantidad, fecha_vencimiento, precio_costo, estado } = req.body;
+
+      const updateData = {};
+      if (numero_lote !== undefined) updateData.numero_lote = numero_lote;
+      if (cantidad !== undefined) updateData.cantidad = cantidad;
+      if (fecha_vencimiento !== undefined) updateData.fecha_vencimiento = fecha_vencimiento;
+      if (precio_costo !== undefined) updateData.precio_costo = precio_costo;
+      if (estado !== undefined) updateData.estado = estado;
+
+      const { data, error } = await supabase
+        .from('lotes')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating lote:', error);
+        return res.status(400).json({ error: 'Error actualizando lote' });
+      }
+
+      return res.status(200).json(data);
+    }
+
+    // DELETE lote
+    if (req.method === 'DELETE') {
+      if (!id) {
+        return res.status(400).json({ error: 'ID requerido para eliminar' });
+      }
+
+      const { error } = await supabase
+        .from('lotes')
+        .update({ estado: false })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting lote:', error);
+        return res.status(400).json({ error: 'Error eliminando lote' });
+      }
+
+      return res.status(200).json({ message: 'Lote eliminado' });
     }
 
     res.status(405).json({ error: 'Método no permitido' });

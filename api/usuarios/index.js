@@ -1,4 +1,5 @@
 import { supabase, setCorsHeaders } from '../../lib/utils.js';
+import { randomUUID } from 'crypto';
 
 async function handler(req, res) {
   setCorsHeaders(res);
@@ -50,12 +51,14 @@ async function handler(req, res) {
         return res.status(400).json({ error: 'Email es requerido' });
       }
 
+      // Generar UUID para el usuario
+      const userId = randomUUID();
+
       // Insertar usuario directamente en la tabla users
-      // Nota: Para un sistema de producción, deberías integrar con Supabase Auth
-      // usando el service_role key. Por ahora, solo guardamos en la tabla.
       const { data, error } = await supabase
         .from('users')
         .insert([{
+          id: userId,
           email,
           role: role || 'vendedor'
         }])

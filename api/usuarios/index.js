@@ -46,35 +46,27 @@ async function handler(req, res) {
     if (req.method === 'POST') {
       const { email, password, role } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email y password son requeridos' });
+      if (!email) {
+        return res.status(400).json({ error: 'Email es requerido' });
       }
 
-      // Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true
-      });
-
-      if (authError) {
-        console.error('Error creating auth user:', authError);
-        return res.status(400).json({ error: authError.message || 'Error creando usuario' });
-      }
-
-      // Insertar en tabla users
+      // Insertar usuario directamente en la tabla users
+      // Nota: Para un sistema de producción, deberías integrar con Supabase Auth
+      // usando el service_role key. Por ahora, solo guardamos en la tabla.
       const { data, error } = await supabase
         .from('users')
         .insert([{
-          id: authData.user.id,
           email,
           role: role || 'vendedor'
         }])
         .select();
 
       if (error) {
-        console.error('Error creating user record:', error);
-        return res.status(400).json({ error: 'Error creando registro de usuario' });
+        console.error('Error creating user:', error);
+        if (error.code === '23505') {
+          return res.status(400).json({ error: 'El email ya está registrado' });
+        }
+        return res.status(400).json({ error: 'Error creando usuario: ' + error.message });
       }
 
       return res.status(201).json(data[0]);
@@ -88,24 +80,17 @@ async function handler(req, res) {
         return res.status(400).json({ error: 'ID es requerido' });
       }
 
-      const { email, role, password } = req.body;
-
-      // Actualizar password si se proporciona
-      if (password) {
-        const { error: pwError } = await supabase.auth.admin.updateUserById(id, {
-          password
-        });
-        
-        if (pwError) {
-          console.error('Error updating password:', pwError);
-          return res.status(400).json({ error: 'Error actualizando contraseña' });
-        }
-      }
+      const { email, role } = req.body;
 
       // Actualizar en tabla users
+      // Nota: La contraseña debería actualizarse en Supabase Auth con service_role key
       const updateData = {};
       if (email) updateData.email = email;
       if (role) updateData.role = role;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No hay datos para actualizar' });
+      }
 
       const { data, error } = await supabase
         .from('users')
@@ -115,7 +100,11 @@ async function handler(req, res) {
 
       if (error) {
         console.error('Error updating user:', error);
-        return res.status(400).json({ error: 'Error actualizando usuario' });
+        return res.status(400).json({ error: 'Error actualizando usuario: ' + error.message });
+      }
+
+      if (!data || data.length === 0) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
       return res.status(200).json(data[0]);

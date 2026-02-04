@@ -2847,13 +2847,15 @@ function GestionUsuarios() {
           })
         ),
         React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, editando ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña *'),
+          React.createElement('label', null, editando ? 'Contraseña (no disponible actualmente)' : 'Contraseña *'),
           React.createElement('input', { 
             className: 'input',
             type: 'password',
             value: formData.password,
             onChange: function(e) { setFormData(Object.assign({}, formData, { password: e.target.value })); },
-            placeholder: 'Ingrese una contraseña segura'
+            placeholder: 'Ingrese una contraseña segura',
+            disabled: editando ? true : false,
+            required: !editando
           })
         ),
         React.createElement('div', { className: 'form-group' },

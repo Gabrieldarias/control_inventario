@@ -34,13 +34,12 @@ async function handler(req, res) {
         descripcion,
         precio_costo,
         precio_venta,
-        stock_minimo: stock_minimo || 0,
-        stock_maximo: stock_maximo || 0,
+        stock_minimo: stock_minimo || 5,
+        stock_maximo: stock_maximo || 1000,
+        stock_total: 0,
         requiere_lote: requiere_lote !== false,
         unidad_medida: unidad_medida || 'ud',
-        estado: true,
-        created_at: new Date(),
-        updated_at: new Date()
+        estado: true
       }]).select();
 
       if (error) {

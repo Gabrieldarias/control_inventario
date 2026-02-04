@@ -16,12 +16,10 @@ async function handler(req, res) {
         return res.status(400).json({ error: 'Nombre requerido' });
       }
 
-      const { data, error } = await supabase.from('categorias').insert([{
+      const { data, error } = await supabase.from('categories').insert([{
         nombre,
         descripcion,
-        orden: orden || 0,
-        estado: true,
-        created_at: new Date()
+        estado: true
       }]).select();
 
       if (error) {

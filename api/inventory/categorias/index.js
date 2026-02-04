@@ -9,7 +9,7 @@ async function handler(req, res) {
   }
 
   try {
-    const { data, error } = await supabase.from('categorias').select('*').eq('estado', true);
+    const { data, error } = await supabase.from('categories').select('*').eq('estado', true);
 
     if (error) {
       console.error('Error fetching categories:', error);

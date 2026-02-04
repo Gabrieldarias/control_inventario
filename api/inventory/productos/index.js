@@ -9,12 +9,12 @@ async function handler(req, res) {
 
   try {
     const { estado } = req.query;
-    let query = supabase.from('products').select('*');
+    let query = supabase.from('products').select('*, categories(nombre)');
 
     if (estado === 'true') {
-      query = query.eq('is_active', true);
+      query = query.eq('estado', true);
     } else if (estado === 'false') {
-      query = query.eq('is_active', false);
+      query = query.eq('estado', false);
     }
 
     const { data, error } = await query;

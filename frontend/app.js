@@ -120,7 +120,8 @@ function api() {
     
     crearLote: (data) => axiosInstance.post('/inventory/lotes', data),
     actualizarLote: (loteId, data) => axiosInstance.put('/inventory/lotes/' + loteId, data),
-    getLotes: (productoId) => axiosInstance.get('/inventory/lotes/' + productoId),
+    getLotes: (params) => axiosInstance.get('/inventory/lotes', { params }),
+    getLote: (id) => axiosInstance.get('/inventory/lotes/' + id),
     
     registrarMovimiento: (data) => axiosInstance.post('/inventory/movimientos', data),
     getMovimientos: (filtros) => axiosInstance.get('/inventory/movimientos', { params: filtros }),
@@ -997,10 +998,10 @@ function GestionLotes() {
   
   const [formData, setFormData] = useState({
     producto_id: '',
-    numero_referencia: '',
+    numero_lote: '',
     cantidad: '',
-    costo_unitario: '',
-    proveedor_id: ''
+    precio_costo: '',
+    fecha_vencimiento: ''
   });
 
   useEffect(function() {
@@ -1018,8 +1019,11 @@ function GestionLotes() {
 
   function seleccionarProducto(id) {
     setLoading(true);
-    setProductoSeleccionado(parseInt(id));
-    api().getLotes(id).then(function(res) {
+    setProductoSeleccionado(id);
+    api().getProductos({ estado: true }).then(function(res) {
+      const params = { producto_id: id };
+      return api().getLotes(params);
+    }).then(function(res) {
       setLotes(res.data);
       setFormData(Object.assign({}, formData, { producto_id: id }));
       setLoading(false);
@@ -1040,7 +1044,7 @@ function GestionLotes() {
       setShowModal(false);
       setEditando(false);
       setLoteId(null);
-      setFormData({ producto_id: formData.producto_id, numero_referencia: '', cantidad: '', costo_unitario: '', proveedor_id: '' });
+      setFormData({ producto_id: formData.producto_id, numero_lote: '', cantidad: '', precio_costo: '', fecha_vencimiento: '' });
     }).catch(function(e) {
       setError('Error: ' + getErrorMessage(e));
     });
@@ -1049,10 +1053,10 @@ function GestionLotes() {
   function editarLote(lote) {
     setFormData({
       producto_id: lote.producto_id,
-      numero_referencia: lote.numero_referencia || '',
-      cantidad: lote.cantidad_actual,
-      costo_unitario: lote.costo_unitario || '',
-      proveedor_id: lote.proveedor_id || ''
+      numero_lote: lote.numero_lote || '',
+      cantidad: lote.cantidad,
+      precio_costo: lote.precio_costo || '',
+      fecha_vencimiento: lote.fecha_vencimiento || ''
     });
     setLoteId(lote.id);
     setEditando(true);
@@ -1065,11 +1069,11 @@ function GestionLotes() {
 
   const lotesRows = lotes.map(function(l) {
     return React.createElement('tr', { key: l.id },
-      React.createElement('td', null, l.numero_referencia || '-'),
-      React.createElement('td', null, l.cantidad_inicial),
-      React.createElement('td', null, l.cantidad_actual),
-      React.createElement('td', null, '$' + parseFloat(l.costo_unitario || 0).toFixed(2)),
-      React.createElement('td', null, React.createElement('span', { className: 'badge badge-' + (l.estado === 'activo' ? 'success' : 'danger') }, l.estado)),
+      React.createElement('td', null, l.numero_lote || '-'),
+      React.createElement('td', null, l.cantidad),
+      React.createElement('td', null, '$' + parseFloat(l.precio_costo || 0).toFixed(2)),
+      React.createElement('td', null, l.fecha_vencimiento || '-'),
+      React.createElement('td', null, React.createElement('span', { className: 'badge badge-' + (l.estado ? 'success' : 'danger') }, l.estado ? 'Activo' : 'Inactivo')),
       React.createElement('td', null,
         React.createElement('button', { className: 'btn btn-small btn-info', onClick: function() { editarLote(l); } }, 'Editar')
       )
@@ -1097,10 +1101,10 @@ function GestionLotes() {
     !loading && productoSeleccionado && React.createElement('table', { className: 'table' },
       React.createElement('thead', null,
         React.createElement('tr', null,
-          React.createElement('th', null, 'Referencia'),
+          React.createElement('th', null, 'Número Lote'),
           React.createElement('th', null, 'Cantidad'),
-          React.createElement('th', null, 'Cantidad Actual'),
-          React.createElement('th', null, 'Costo Unit.'),
+          React.createElement('th', null, 'Precio Costo'),
+          React.createElement('th', null, 'Vencimiento'),
           React.createElement('th', null, 'Estado'),
           React.createElement('th', null, 'Acciones')
         )
@@ -1129,11 +1133,12 @@ function GestionLotes() {
           )
         ),
         React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, 'Número de Referencia'),
+          React.createElement('label', null, 'Número de Lote *'),
           React.createElement('input', { 
             className: 'input',
-            value: formData.numero_referencia,
-            onChange: function(e) { setFormData(Object.assign({}, formData, { numero_referencia: e.target.value })); }
+            value: formData.numero_lote,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { numero_lote: e.target.value })); },
+            required: true
           })
         ),
         React.createElement('div', { className: 'form-group' },
@@ -1147,13 +1152,22 @@ function GestionLotes() {
           })
         ),
         React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, 'Costo Unitario'),
+          React.createElement('label', null, 'Precio Costo'),
           React.createElement('input', { 
             className: 'input',
             type: 'number',
             step: '0.01',
-            value: formData.costo_unitario,
-            onChange: function(e) { setFormData(Object.assign({}, formData, { costo_unitario: e.target.value })); }
+            value: formData.precio_costo,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { precio_costo: e.target.value })); }
+          })
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Fecha de Vencimiento'),
+          React.createElement('input', { 
+            className: 'input',
+            type: 'date',
+            value: formData.fecha_vencimiento,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { fecha_vencimiento: e.target.value })); }
           })
         ),
         React.createElement('button', { className: 'btn btn-primary btn-large', type: 'submit' }, 'Guardar Lote')

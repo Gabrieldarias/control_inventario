@@ -145,9 +145,11 @@ function api() {
     crearProveedor: (data) => axiosInstance.post('/inventory/proveedores', data),
     
     // Compras
-    crearCompra: (data) => axiosInstance.post('/compras', data),
-    listarCompras: (filtros) => axiosInstance.get('/compras', { params: filtros }),
-    obtenerCompra: (id) => axiosInstance.get('/compras/' + id),
+    crearCompra: (data) => axiosInstance.post('/inventory/compras', data),
+    listarCompras: (filtros) => axiosInstance.get('/inventory/compras', { params: filtros }),
+    obtenerCompra: (id) => axiosInstance.get('/inventory/compras/' + id),
+    actualizarCompra: (id, data) => axiosInstance.put('/inventory/compras/' + id, data),
+    eliminarCompra: (id) => axiosInstance.delete('/inventory/compras/' + id),
     
     // Devoluciones
     crearDevolucion: (data) => axiosInstance.post('/devoluciones', data),
@@ -1171,6 +1173,250 @@ function GestionLotes() {
           })
         ),
         React.createElement('button', { className: 'btn btn-primary btn-large', type: 'submit' }, 'Guardar Lote')
+      )
+    )
+  );
+}
+
+// ===== GESTIÓN DE COMPRAS =====
+
+function GestionCompras() {
+  const [proveedores, setProveedores] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [compras, setCompras] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [mostrarDetalles, setMostrarDetalles] = useState(null);
+
+  const [formData, setFormData] = useState({
+    proveedor_id: '',
+    items: []
+  });
+
+  const [nuevoItem, setNuevoItem] = useState({
+    producto_id: '',
+    cantidad: '',
+    precio_unitario: ''
+  });
+
+  useEffect(function() {
+    cargarDatos();
+  }, []);
+
+  function cargarDatos() {
+    Promise.all([
+      api().getProveedores(),
+      api().getProductos({ estado: true }),
+      api().listarCompras({})
+    ]).then(function(results) {
+      setProveedores(results[0].data);
+      setProductos(results[1].data);
+      setCompras(results[2].data);
+      setError(null);
+    }).catch(function(e) {
+      setError('Error al cargar datos');
+    });
+  }
+
+  function agregarItem() {
+    if (!nuevoItem.producto_id || !nuevoItem.cantidad || !nuevoItem.precio_unitario) {
+      setError('Complete todos los campos del producto');
+      return;
+    }
+
+    const item = {
+      producto_id: nuevoItem.producto_id,
+      cantidad: parseInt(nuevoItem.cantidad),
+      precio_unitario: parseFloat(nuevoItem.precio_unitario)
+    };
+
+    setFormData(Object.assign({}, formData, {
+      items: [...formData.items, item]
+    }));
+
+    setNuevoItem({ producto_id: '', cantidad: '', precio_unitario: '' });
+    setError(null);
+  }
+
+  function eliminarItem(index) {
+    const items = formData.items.filter((_, i) => i !== index);
+    setFormData(Object.assign({}, formData, { items }));
+  }
+
+  function guardarCompra(e) {
+    e.preventDefault();
+
+    if (!formData.proveedor_id || formData.items.length === 0) {
+      setError('Seleccione proveedor y agregue productos');
+      return;
+    }
+
+    api().crearCompra(formData).then(function() {
+      cargarDatos();
+      setShowModal(false);
+      setFormData({ proveedor_id: '', items: [] });
+      setError(null);
+    }).catch(function(e) {
+      setError('Error: ' + getErrorMessage(e));
+    });
+  }
+
+  const proveedoresOpts = proveedores.map(function(p) {
+    return React.createElement('option', { key: p.id, value: p.id }, p.nombre);
+  });
+
+  const productosOpts = productos.map(function(p) {
+    return React.createElement('option', { key: p.id, value: p.id }, p.nombre + ' ($' + p.precio_costo.toFixed(2) + ')');
+  });
+
+  const itemsRows = formData.items.map(function(item, idx) {
+    const prod = productos.find(p => p.id === item.producto_id);
+    return React.createElement('tr', { key: idx },
+      React.createElement('td', null, prod ? prod.nombre : '-'),
+      React.createElement('td', null, item.cantidad),
+      React.createElement('td', null, '$' + item.precio_unitario.toFixed(2)),
+      React.createElement('td', null, '$' + (item.cantidad * item.precio_unitario).toFixed(2)),
+      React.createElement('td', null,
+        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { eliminarItem(idx); } }, 'Eliminar')
+      )
+    );
+  });
+
+  const comprasRows = compras.map(function(c) {
+    return React.createElement('tr', { key: c.id },
+      React.createElement('td', null, c.suppliers ? c.suppliers.nombre : '-'),
+      React.createElement('td', null, '$' + c.total.toFixed(2)),
+      React.createElement('td', null, React.createElement('span', { className: 'badge badge-success' }, c.estado)),
+      React.createElement('td', null, new Date(c.created_at).toLocaleDateString()),
+      React.createElement('td', null,
+        React.createElement('button', { className: 'btn btn-small btn-info', onClick: function() { setMostrarDetalles(c); } }, 'Ver')
+      )
+    );
+  });
+
+  const totalCompra = formData.items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
+
+  return React.createElement('div', { className: 'panel' },
+    React.createElement('div', { className: 'panel-header' },
+      React.createElement('h2', null, '📦 Gestión de Compras'),
+      React.createElement('button', { className: 'btn btn-success', onClick: function() { setShowModal(true); } }, '+ Nueva Compra')
+    ),
+    error && React.createElement(AlertBox, { tipo: 'danger', mensaje: error }),
+    React.createElement('table', { className: 'table' },
+      React.createElement('thead', null,
+        React.createElement('tr', null,
+          React.createElement('th', null, 'Proveedor'),
+          React.createElement('th', null, 'Total'),
+          React.createElement('th', null, 'Estado'),
+          React.createElement('th', null, 'Fecha'),
+          React.createElement('th', null, 'Acciones')
+        )
+      ),
+      React.createElement('tbody', null, comprasRows)
+    ),
+    showModal && React.createElement(Modal, { 
+      titulo: 'Nueva Compra',
+      onClose: function() { 
+        setShowModal(false);
+        setFormData({ proveedor_id: '', items: [] });
+        setNuevoItem({ producto_id: '', cantidad: '', precio_unitario: '' });
+      }
+    },
+      React.createElement('form', { onSubmit: guardarCompra },
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Proveedor *'),
+          React.createElement('select', { 
+            className: 'input',
+            value: formData.proveedor_id,
+            onChange: function(e) { setFormData(Object.assign({}, formData, { proveedor_id: e.target.value })); },
+            required: true
+          },
+            React.createElement('option', { value: '' }, 'Elegir proveedor...'),
+            proveedoresOpts
+          )
+        ),
+        React.createElement('h3', null, 'Agregar Productos'),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', null, 'Producto'),
+          React.createElement('select', { 
+            className: 'input',
+            value: nuevoItem.producto_id,
+            onChange: function(e) { setNuevoItem(Object.assign({}, nuevoItem, { producto_id: e.target.value })); }
+          },
+            React.createElement('option', { value: '' }, 'Elegir producto...'),
+            productosOpts
+          )
+        ),
+        React.createElement('div', { className: 'form-row' },
+          React.createElement('div', { className: 'form-group' },
+            React.createElement('label', null, 'Cantidad'),
+            React.createElement('input', { 
+              className: 'input',
+              type: 'number',
+              value: nuevoItem.cantidad,
+              onChange: function(e) { setNuevoItem(Object.assign({}, nuevoItem, { cantidad: e.target.value })); }
+            })
+          ),
+          React.createElement('div', { className: 'form-group' },
+            React.createElement('label', null, 'Precio Unitario'),
+            React.createElement('input', { 
+              className: 'input',
+              type: 'number',
+              step: '0.01',
+              value: nuevoItem.precio_unitario,
+              onChange: function(e) { setNuevoItem(Object.assign({}, nuevoItem, { precio_unitario: e.target.value })); }
+            })
+          )
+        ),
+        React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: agregarItem }, '+ Agregar Producto'),
+        formData.items.length > 0 && React.createElement('table', { className: 'table mt-3' },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', null, 'Producto'),
+              React.createElement('th', null, 'Cantidad'),
+              React.createElement('th', null, 'Precio'),
+              React.createElement('th', null, 'Subtotal'),
+              React.createElement('th', null, 'Acción')
+            )
+          ),
+          React.createElement('tbody', null, itemsRows)
+        ),
+        formData.items.length > 0 && React.createElement('div', { className: 'alert alert-info' },
+          'Total Compra: $' + totalCompra.toFixed(2)
+        ),
+        React.createElement('button', { className: 'btn btn-primary btn-large', type: 'submit' }, 'Guardar Compra')
+      )
+    ),
+    mostrarDetalles && React.createElement(Modal, { 
+      titulo: 'Detalles de Compra',
+      onClose: function() { setMostrarDetalles(null); }
+    },
+      React.createElement('div', null,
+        React.createElement('p', null, React.createElement('strong', null, 'Proveedor: '), mostrarDetalles.suppliers ? mostrarDetalles.suppliers.nombre : '-'),
+        React.createElement('p', null, React.createElement('strong', null, 'Total: '), '$' + mostrarDetalles.total.toFixed(2)),
+        React.createElement('p', null, React.createElement('strong', null, 'Fecha: '), new Date(mostrarDetalles.created_at).toLocaleDateString()),
+        React.createElement('h3', null, 'Productos'),
+        mostrarDetalles.purchase_items && mostrarDetalles.purchase_items.length > 0 && React.createElement('table', { className: 'table' },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', null, 'Producto'),
+              React.createElement('th', null, 'Cantidad'),
+              React.createElement('th', null, 'Precio Unit.'),
+              React.createElement('th', null, 'Subtotal')
+            )
+          ),
+          React.createElement('tbody', null,
+            mostrarDetalles.purchase_items.map(function(item) {
+              return React.createElement('tr', { key: item.id },
+                React.createElement('td', null, item.products ? item.products.nombre : '-'),
+                React.createElement('td', null, item.cantidad),
+                React.createElement('td', null, '$' + item.precio_unitario.toFixed(2)),
+                React.createElement('td', null, '$' + item.subtotal.toFixed(2))
+              );
+            })
+          )
+        )
       )
     )
   );

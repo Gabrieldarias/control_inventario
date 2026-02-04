@@ -142,8 +142,18 @@ function api() {
     crearVenta: (data) => axiosInstance.post('/sales', data),
     listarVentas: (filtros) => axiosInstance.get('/sales', { params: filtros }),
     
-    getProveedores: () => axiosInstance.get('/inventory/proveedores'),
-    crearProveedor: (data) => axiosInstance.post('/inventory/proveedores', data),
+    // Contactos (Clientes y Proveedores consolidados)
+    getClientes: () => axiosInstance.get('/inventory/contactos', { params: { tipo: 'cliente' } }),
+    crearCliente: (data) => axiosInstance.post('/inventory/contactos', data, { params: { tipo: 'cliente' } }),
+    obtenerCliente: (id) => axiosInstance.get('/inventory/contactos', { params: { tipo: 'cliente', id } }),
+    actualizarCliente: (id, data) => axiosInstance.put('/inventory/contactos', data, { params: { tipo: 'cliente', id } }),
+    eliminarCliente: (id) => axiosInstance.delete('/inventory/contactos', { params: { tipo: 'cliente', id } }),
+    
+    getProveedores: () => axiosInstance.get('/inventory/contactos', { params: { tipo: 'proveedor' } }),
+    crearProveedor: (data) => axiosInstance.post('/inventory/contactos', data, { params: { tipo: 'proveedor' } }),
+    obtenerProveedor: (id) => axiosInstance.get('/inventory/contactos', { params: { tipo: 'proveedor', id } }),
+    actualizarProveedor: (id, data) => axiosInstance.put('/inventory/contactos', data, { params: { tipo: 'proveedor', id } }),
+    eliminarProveedor: (id) => axiosInstance.delete('/inventory/contactos', { params: { tipo: 'proveedor', id } }),
     
     // Compras
     crearCompra: (data) => axiosInstance.post('/inventory/compras', data),

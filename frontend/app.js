@@ -5,10 +5,18 @@ const { useState, useEffect } = React;
 // Decodificar token JWT
 function decodeToken(token) {
   try {
-    const parts = token.split('.');
-    const decoded = JSON.parse(atob(parts[1]));
-    return decoded;
+    // Verificar si es un token con formato JWT (header.payload.signature)
+    if (token.includes('.')) {
+      const parts = token.split('.');
+      const decoded = JSON.parse(atob(parts[1]));
+      return decoded;
+    } else {
+      // Token simple en base64
+      const decoded = JSON.parse(atob(token));
+      return decoded;
+    }
   } catch (e) {
+    console.error('❌ Error decodificando token:', e);
     return null;
   }
 }

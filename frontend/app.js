@@ -207,10 +207,20 @@ function ProtectedRoute(props) {
     return React.createElement('div', { className: 'alert alert-danger' }, 'Debe iniciar sesión');
   }
   
-  if (rolesPermitidos && !rolesPermitidos.includes(usuario.role)) {
-    return React.createElement('div', { className: 'alert alert-danger' }, 
-      '❌ Acceso denegado. Rol requerido: ' + rolesPermitidos.join(', ')
-    );
+  // Normalizar rol del usuario (admin/administrador)
+  const userRole = usuario.role || usuario.rol || '';
+  const isAdmin = userRole === 'admin' || userRole === 'administrador';
+  
+  if (rolesPermitidos) {
+    // Si los roles permitidos incluyen 'admin' y el usuario es administrador, permitir
+    const tieneAcceso = rolesPermitidos.includes(userRole) || 
+                       (isAdmin && rolesPermitidos.includes('admin'));
+    
+    if (!tieneAcceso) {
+      return React.createElement('div', { className: 'alert alert-danger' }, 
+        '❌ Acceso denegado. Rol requerido: ' + rolesPermitidos.join(', ')
+      );
+    }
   }
   
   return children;

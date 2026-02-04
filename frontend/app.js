@@ -284,21 +284,24 @@ function Sidebar(props) {
   // Menú items basado en rol
   const getMenuItems = function() {
     const items = [
-      { id: 'ventas', label: 'Ventas', icon: '💰', roles: ['admin', 'vendedor'] },
-      { id: 'devoluciones', label: 'Devoluciones', icon: '↩️', roles: ['admin', 'vendedor'] }
+      { id: 'ventas', label: 'Ventas', icon: '💰', roles: ['admin', 'administrador', 'vendedor'] },
+      { id: 'devoluciones', label: 'Devoluciones', icon: '↩️', roles: ['admin', 'administrador', 'vendedor'] }
     ];
     
-    if (usuario && usuario.role === 'admin') {
+    const userRole = usuario && (usuario.role || usuario.rol || '');
+    const isAdmin = userRole === 'admin' || userRole === 'administrador';
+    
+    if (usuario && isAdmin) {
       items.push(
-        { id: 'productos', label: 'Productos', icon: '📦', roles: ['admin'] },
-        { id: 'categorias', label: 'Categorías', icon: '📂', roles: ['admin'] },
-        { id: 'lotes', label: 'Lotes', icon: '📋', roles: ['admin'] },
-        { id: 'proveedores', label: 'Proveedores', icon: '🏭', roles: ['admin'] },
-        { id: 'compras', label: 'Compras', icon: '📥', roles: ['admin'] },
-        { id: 'reportes', label: 'Reportes', icon: '📊', roles: ['admin'] },
-        { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin'] },
-        { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },
-        { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin'] }
+        { id: 'productos', label: 'Productos', icon: '📦', roles: ['admin', 'administrador'] },
+        { id: 'categorias', label: 'Categorías', icon: '📂', roles: ['admin', 'administrador'] },
+        { id: 'lotes', label: 'Lotes', icon: '📋', roles: ['admin', 'administrador'] },
+        { id: 'proveedores', label: 'Proveedores', icon: '🏭', roles: ['admin', 'administrador'] },
+        { id: 'compras', label: 'Compras', icon: '📥', roles: ['admin', 'administrador'] },
+        { id: 'reportes', label: 'Reportes', icon: '📊', roles: ['admin', 'administrador'] },
+        { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin', 'administrador'] },
+        { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin', 'administrador'] },
+        { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin', 'administrador'] }
       );
     }
     

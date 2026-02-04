@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'Build complete'",
+    "build": "sh build-env.sh",
     "start": "vercel dev"
   },
   "dependencies": {

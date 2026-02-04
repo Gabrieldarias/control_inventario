@@ -603,13 +603,13 @@ function GestionCategorias() {
     var isExpanded = expandedCategoryId === categoria.id;
 
     var productosRows = productos.map(function(producto) {
-      var estado = obtenerEstadoInventario(producto.stock_actual, producto.stock_minimo, producto.stock_maximo);
+      var estado = obtenerEstadoInventario(producto.stock_total, producto.stock_minimo, producto.stock_maximo);
       return React.createElement('tr', { key: producto.id },
         React.createElement('td', null, producto.nombre),
         React.createElement('td', null, producto.codigo_interno || '-'),
         React.createElement('td', { style: { textAlign: 'right' } }, '$' + (producto.precio_venta || 0).toFixed(2)),
         React.createElement('td', { style: { textAlign: 'center' } }, 
-          React.createElement('span', null, producto.stock_actual || 0)
+          React.createElement('span', null, producto.stock_total || 0)
         ),
         React.createElement('td', { style: { textAlign: 'center' } }, 
           React.createElement('span', { className: 'badge ' + estado.clase }, estado.label)
@@ -2810,7 +2810,6 @@ function GestionUsuarios() {
   const [editando, setEditando] = useState(null);
   
   const [formData, setFormData] = useState({
-    nombre: '',
     email: '',
     password: '',
     role: 'vendedor'
@@ -2834,6 +2833,11 @@ function GestionUsuarios() {
 
   function guardarUsuario(e) {
     e.preventDefault();
+    if (!formData.email || (!editando && !formData.password)) {
+      setError('Email y contraseña son requeridos');
+      return;
+    }
+    
     const promesa = editando 
       ? api().actualizarUsuario(editando.id, formData)
       : api().crearUsuario(formData);
@@ -2841,15 +2845,16 @@ function GestionUsuarios() {
     promesa.then(function() {
       cargarUsuarios();
       setShowModal(false);
-      setFormData({ nombre: '', email: '', password: '', role: 'vendedor' });
+      setFormData({ email: '', password: '', role: 'vendedor' });
       setEditando(null);
+      setError(null);
     }).catch(function(e) {
       setError('Error: ' + getErrorMessage(e));
     });
   }
 
   function eliminar(id) {
-    if (!confirm('¿Eliminar usuario?')) return;
+    if (!confirm('¿Desactivar usuario?')) return;
     api().eliminarUsuario(id).then(function() {
       cargarUsuarios();
     }).catch(function(e) {
@@ -2860,7 +2865,6 @@ function GestionUsuarios() {
   function editar(usuario) {
     setEditando(usuario);
     setFormData({
-      nombre: usuario.nombre,
       email: usuario.email,
       password: '',
       role: usuario.role
@@ -2870,14 +2874,14 @@ function GestionUsuarios() {
 
   const usuariosRows = usuarios.map(function(u) {
     return React.createElement('tr', { key: u.id },
-      React.createElement('td', null, u.nombre),
+      React.createElement('td', null, u.email),
       React.createElement('td', null, u.email),
       React.createElement('td', null, React.createElement('span', { className: 'badge badge-info' }, u.role)),
-      React.createElement('td', null, u.estado ? 'Activo' : 'Inactivo'),
+      React.createElement('td', null, u.estado !== false ? 'Activo' : 'Inactivo'),
       React.createElement('td', null,
         React.createElement('button', { className: 'btn btn-small btn-secondary', onClick: function() { editar(u); } }, 'Editar'),
         ' ',
-        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { eliminar(u.id); } }, 'Eliminar')
+        React.createElement('button', { className: 'btn btn-small btn-danger', onClick: function() { eliminar(u.id); } }, 'Desactivar')
       )
     );
   });
@@ -2887,7 +2891,7 @@ function GestionUsuarios() {
       React.createElement('h2', null, '👥 Gestión de Usuarios'),
       React.createElement('button', { className: 'btn btn-success', onClick: function() {
         setEditando(null);
-        setFormData({ nombre: '', email: '', password: '', role: 'vendedor' });
+        setFormData({ email: '', password: '', role: 'vendedor' });
         setShowModal(true);
       }}, '+ Nuevo Usuario')
     ),
@@ -2897,8 +2901,8 @@ function GestionUsuarios() {
       React.createElement('table', { className: 'table' },
         React.createElement('thead', null,
           React.createElement('tr', null,
-            React.createElement('th', null, 'Nombre'),
             React.createElement('th', null, 'Email'),
+            React.createElement('th', null, 'Usuario'),
             React.createElement('th', null, 'Rol'),
             React.createElement('th', null, 'Estado'),
             React.createElement('th', null, 'Acciones')
@@ -2912,15 +2916,7 @@ function GestionUsuarios() {
       onClose: function() { setShowModal(false); }
     },
       React.createElement('form', { onSubmit: guardarUsuario },
-        React.createElement('div', { className: 'form-group' },
-          React.createElement('label', null, 'Nombre *'),
-          React.createElement('input', { 
-            className: 'input',
-            value: formData.nombre,
-            onChange: function(e) { setFormData(Object.assign({}, formData, { nombre: e.target.value })); },
-            required: true
-          })
-        ),
+        error && React.createElement(AlertBox, { tipo: 'danger', mensaje: error }),
         React.createElement('div', { className: 'form-group' },
           React.createElement('label', null, 'Email *'),
           React.createElement('input', { 
@@ -2928,7 +2924,8 @@ function GestionUsuarios() {
             type: 'email',
             value: formData.email,
             onChange: function(e) { setFormData(Object.assign({}, formData, { email: e.target.value })); },
-            required: true
+            required: true,
+            placeholder: 'usuario@example.com'
           })
         ),
         React.createElement('div', { className: 'form-group' },
@@ -2938,7 +2935,7 @@ function GestionUsuarios() {
             type: 'password',
             value: formData.password,
             onChange: function(e) { setFormData(Object.assign({}, formData, { password: e.target.value })); },
-            required: !editando
+            placeholder: 'Ingrese una contraseña segura'
           })
         ),
         React.createElement('div', { className: 'form-group' },
@@ -2950,10 +2947,14 @@ function GestionUsuarios() {
             required: true
           },
             React.createElement('option', { value: 'vendedor' }, 'Vendedor'),
-            React.createElement('option', { value: 'admin' }, 'Administrador')
+            React.createElement('option', { value: 'admin' }, 'Administrador'),
+            React.createElement('option', { value: 'administrador' }, 'Administrador')
           )
         ),
-        React.createElement('button', { className: 'btn btn-primary btn-large', type: 'submit' }, editando ? 'Actualizar Usuario' : 'Crear Usuario')
+        React.createElement('div', { className: 'form-actions' },
+          React.createElement('button', { className: 'btn btn-success', type: 'submit' }, editando ? 'Actualizar Usuario' : 'Crear Usuario'),
+          React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: function() { setShowModal(false); } }, 'Cancelar')
+        )
       )
     )
   );

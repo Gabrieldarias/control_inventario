@@ -9,13 +9,18 @@ async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const { estado } = req.query;
+      const { estado, categoria_id } = req.query;
       let query = supabase.from('products').select('*, categories(nombre)');
 
       if (estado === 'true') {
         query = query.eq('estado', true);
       } else if (estado === 'false') {
         query = query.eq('estado', false);
+      }
+
+      // Filtrar por categoría si se especifica
+      if (categoria_id) {
+        query = query.eq('categoria_id', categoria_id);
       }
 
       const { data, error } = await query;

@@ -140,6 +140,7 @@ function api() {
     
     // Ventas
     crearVenta: (data) => axiosInstance.post('/sales', data),
+    listarVentas: (filtros) => axiosInstance.get('/sales', { params: filtros }),
     
     getProveedores: () => axiosInstance.get('/inventory/proveedores'),
     crearProveedor: (data) => axiosInstance.post('/inventory/proveedores', data),
@@ -311,7 +312,7 @@ function Sidebar(props) {
         { id: 'compras', label: 'Compras', icon: '📥', roles: ['admin', 'administrador'] },
         { id: 'reportes', label: 'Reportes', icon: '📊', roles: ['admin', 'administrador'] },
         { id: 'movimientos', label: 'Movimientos', icon: '📈', roles: ['admin', 'administrador'] },
-        { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin', 'administrador'] },
+        // { id: 'alertas', label: 'Alertas', icon: '🔔', roles: ['admin', 'administrador'] }, // Oculto temporalmente
         { id: 'usuarios', label: 'Usuarios', icon: '👥', roles: ['admin', 'administrador'] },
         { id: 'configuracion', label: 'Configuración', icon: '⚙️', roles: ['admin', 'administrador'] }
       );
@@ -2547,14 +2548,17 @@ function GestionDevoluciones() {
   function cargarDatos() {
     setLoading(true);
     Promise.all([
-      api().listarDevoluciones({}),
-      api().listarVentas({})
+      api().listarDevoluciones({}).catch(function(e) { console.error('Error en devoluciones:', e); return { data: [] }; }),
+      api().listarVentas({}).catch(function(e) { console.error('Error en ventas:', e); return { data: [] }; })
     ]).then(function(resultados) {
+      console.log('Devoluciones cargadas:', resultados[0].data);
+      console.log('Ventas cargadas:', resultados[1].data);
       setDevoluciones(resultados[0].data || []);
       setVentas(resultados[1].data || []);
       setError(null);
       setLoading(false);
     }).catch(function(e) {
+      console.error('Error general:', e);
       setError('Error al cargar datos: ' + getErrorMessage(e));
       setLoading(false);
     });

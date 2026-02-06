@@ -16,11 +16,17 @@ const emptyForm = {
 export default function InventarioPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [items, setItems] = useState([]);
-  const [form, setForm] = useState(emptyForm);
+  const [newForm, setNewForm] = useState(emptyForm);
+  const [editForm, setEditForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showCompraModal, setShowCompraModal] = useState(false);
+  const [compraProductoId, setCompraProductoId] = useState("");
+  const [compraCantidad, setCompraCantidad] = useState("");
 
   const cargarInventario = async () => {
     setLoading(true);
@@ -41,12 +47,17 @@ export default function InventarioPage() {
     cargarInventario();
   }, []);
 
-  const handleChange = (event) => {
+  const handleNewChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setNewForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (event) => {
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreate = async (event) => {
     event.preventDefault();
     setSaving(true);
     setError("");
@@ -63,33 +74,77 @@ export default function InventarioPage() {
 
     const payload = {
       user_id: user.id,
-      nombre: form.nombre,
-      precio_compra: Number(form.precio_compra || 0),
-      precio_venta: Number(form.precio_venta || 0),
-      stock: Number(form.stock || 0),
+      nombre: newForm.nombre,
+      precio_compra: Number(newForm.precio_compra || 0),
+      precio_venta: Number(newForm.precio_venta || 0),
+      stock: Number(newForm.stock || 0),
     };
 
-    const result = form.id
-      ? await supabase.from("inventory").update(payload).eq("id", form.id)
-      : await supabase.from("inventory").insert(payload);
+    const result = await supabase.from("inventory").insert(payload);
 
     if (result.error) {
       setError("No se pudo guardar el artículo.");
     } else {
-      setForm(emptyForm);
+      setNewForm(emptyForm);
+      setShowNewForm(false);
+      await cargarInventario();
+    }
+    setSaving(false);
+  };
+
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+
+    const payload = {
+      nombre: editForm.nombre,
+      precio_compra: Number(editForm.precio_compra || 0),
+      precio_venta: Number(editForm.precio_venta || 0),
+      stock: Number(editForm.stock || 0),
+    };
+
+    const result = await supabase
+      .from("inventory")
+      .update(payload)
+      .eq("id", editForm.id);
+
+    if (result.error) {
+      setError("No se pudo actualizar el artículo.");
+    } else {
+      setEditForm(emptyForm);
+      setShowEditForm(false);
       await cargarInventario();
     }
     setSaving(false);
   };
 
   const handleEdit = (item) => {
-    setForm({
+    setEditForm({
       id: item.id,
       nombre: item.nombre,
       precio_compra: item.precio_compra,
       precio_venta: item.precio_venta,
       stock: item.stock,
     });
+    setShowEditForm(true);
+    setShowNewForm(false);
+  };
+
+  const closeEditForm = () => {
+    setEditForm(emptyForm);
+    setShowEditForm(false);
+  };
+
+  const openNewForm = () => {
+    setNewForm(emptyForm);
+    setShowNewForm(true);
+    setShowEditForm(false);
+  };
+
+  const closeNewForm = () => {
+    setNewForm(emptyForm);
+    setShowNewForm(false);
   };
 
   const handleDelete = async (id) => {
@@ -130,6 +185,37 @@ export default function InventarioPage() {
     }
   };
 
+  const handleCompraSubmit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+
+    const producto = items.find((item) => item.id === compraProductoId);
+    if (!producto) {
+      setError("Selecciona un producto válido.");
+      setSaving(false);
+      return;
+    }
+
+    const cantidad = Number(compraCantidad || 0);
+    const nuevoStock = producto.stock + cantidad;
+
+    const { error: updateError } = await supabase
+      .from("inventory")
+      .update({ stock: nuevoStock })
+      .eq("id", producto.id);
+
+    if (updateError) {
+      setError("No se pudo actualizar el stock.");
+    } else {
+      setShowCompraModal(false);
+      setCompraProductoId("");
+      setCompraCantidad("");
+      await cargarInventario();
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -139,7 +225,17 @@ export default function InventarioPage() {
             Administra tus productos y existencias.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-primary" onClick={openNewForm} type="button">
+            + Nuevo artículo
+          </button>
+          <button
+            className="btn-outline"
+            onClick={() => setShowCompraModal(true)}
+            type="button"
+          >
+            + Agregar compra
+          </button>
           <button className="btn-outline" onClick={() => generarPdf(true)} type="button">
             Vista previa PDF
           </button>
@@ -159,18 +255,22 @@ export default function InventarioPage() {
         />
       </section>
 
-      <section className="card p-6">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {form.id ? "Editar artículo" : "Nuevo artículo"}
-        </h2>
-        <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+      {showNewForm && (
+        <section className="card p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Nuevo artículo</h2>
+            <button className="btn-outline" type="button" onClick={closeNewForm}>
+              Cerrar
+            </button>
+          </div>
+          <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
           <div>
             <label className="text-sm font-medium text-slate-700">Nombre</label>
             <input
               name="nombre"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              value={form.nombre}
-              onChange={handleChange}
+              value={newForm.nombre}
+              onChange={handleNewChange}
               required
             />
           </div>
@@ -180,8 +280,8 @@ export default function InventarioPage() {
               name="stock"
               type="number"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              value={form.stock}
-              onChange={handleChange}
+              value={newForm.stock}
+              onChange={handleNewChange}
               required
             />
           </div>
@@ -191,8 +291,8 @@ export default function InventarioPage() {
               name="precio_compra"
               type="number"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              value={form.precio_compra}
-              onChange={handleChange}
+              value={newForm.precio_compra}
+              onChange={handleNewChange}
               required
             />
           </div>
@@ -202,8 +302,8 @@ export default function InventarioPage() {
               name="precio_venta"
               type="number"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              value={form.precio_venta}
-              onChange={handleChange}
+              value={newForm.precio_venta}
+              onChange={handleNewChange}
               required
             />
           </div>
@@ -214,20 +314,84 @@ export default function InventarioPage() {
           )}
           <div className="md:col-span-2 flex gap-3">
             <button className="btn-primary" type="submit" disabled={saving}>
-              {saving ? "Guardando..." : form.id ? "Actualizar" : "Agregar"}
+              {saving ? "Guardando..." : "Agregar"}
             </button>
-            {form.id && (
-              <button
-                className="btn-outline"
-                type="button"
-                onClick={() => setForm(emptyForm)}
-              >
+            <button className="btn-outline" type="button" onClick={closeNewForm}>
+              Cancelar
+            </button>
+          </div>
+          </form>
+        </section>
+      )}
+
+      {showEditForm && (
+        <section className="card p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Editar artículo</h2>
+            <button className="btn-outline" type="button" onClick={closeEditForm}>
+              Cerrar
+            </button>
+          </div>
+          <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleUpdate}>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Nombre</label>
+              <input
+                name="nombre"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={editForm.nombre}
+                onChange={handleEditChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Stock</label>
+              <input
+                name="stock"
+                type="number"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={editForm.stock}
+                onChange={handleEditChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Precio compra</label>
+              <input
+                name="precio_compra"
+                type="number"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={editForm.precio_compra}
+                onChange={handleEditChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Precio venta</label>
+              <input
+                name="precio_venta"
+                type="number"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={editForm.precio_venta}
+                onChange={handleEditChange}
+                required
+              />
+            </div>
+            {error && (
+              <div className="md:col-span-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+            <div className="md:col-span-2 flex gap-3">
+              <button className="btn-primary" type="submit" disabled={saving}>
+                {saving ? "Guardando..." : "Actualizar"}
+              </button>
+              <button className="btn-outline" type="button" onClick={closeEditForm}>
                 Cancelar
               </button>
-            )}
-          </div>
-        </form>
-      </section>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section className="card p-6">
         <h2 className="text-lg font-semibold text-slate-900">Productos</h2>
@@ -273,6 +437,68 @@ export default function InventarioPage() {
           </div>
         )}
       </section>
+
+      {showCompraModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="card w-full max-w-lg p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Agregar compra</h3>
+              <button
+                className="btn-outline"
+                type="button"
+                onClick={() => setShowCompraModal(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <form className="mt-4 grid gap-4" onSubmit={handleCompraSubmit}>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Producto</label>
+                <select
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={compraProductoId}
+                  onChange={(event) => setCompraProductoId(event.target.value)}
+                  required
+                >
+                  <option value="">Selecciona un producto</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Cantidad</label>
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={compraCantidad}
+                  onChange={(event) => setCompraCantidad(event.target.value)}
+                  required
+                />
+              </div>
+              {error && (
+                <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button className="btn-primary" type="submit" disabled={saving}>
+                  {saving ? "Guardando..." : "Actualizar stock"}
+                </button>
+                <button
+                  className="btn-outline"
+                  type="button"
+                  onClick={() => setShowCompraModal(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

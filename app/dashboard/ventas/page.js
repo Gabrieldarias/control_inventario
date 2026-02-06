@@ -10,10 +10,20 @@ export default function VentasPage() {
   const [carrito, setCarrito] = useState([]);
   const [tasaBs, setTasaBs] = useState(36.5);
   const [moneda, setMoneda] = useState("USD");
+  const [metodo1, setMetodo1] = useState("Pago Movil");
+  const [metodo2, setMetodo2] = useState("BS en efectivo");
+  const [monto1, setMonto1] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+
+  const metodosPago = [
+    { label: "Pago Movil", moneda: "BS" },
+    { label: "BS en efectivo", moneda: "BS" },
+    { label: "$ en efectivo", moneda: "USD" },
+    { label: "Transferencia", moneda: "BS" },
+  ];
 
   const cargarInventario = async () => {
     setLoading(true);
@@ -86,6 +96,21 @@ export default function VentasPage() {
     0
   );
   const totalBs = totalUsd * Number(tasaBs || 0);
+  const monedaMetodo1 = metodosPago.find((m) => m.label === metodo1)?.moneda;
+  const monto2 = Math.max(0, totalUsd - Number(monto1 || 0));
+
+  const getMetodoAlterno = (actual) =>
+    metodosPago.find((m) => m.label !== actual) || metodosPago[0];
+
+  useEffect(() => {
+    if (totalUsd <= 0) {
+      setMonto1(0);
+      return;
+    }
+    if (monto1 > totalUsd) {
+      setMonto1(totalUsd);
+    }
+  }, [totalUsd]);
 
   const guardarVenta = async () => {
     if (carrito.length === 0) return;
@@ -101,6 +126,19 @@ export default function VentasPage() {
       setSaving(false);
       return;
     }
+
+    const pagos = [
+      {
+        metodo: metodo1,
+        monto_usd: monto1,
+        moneda: monedaMetodo1,
+      },
+      {
+        metodo: metodo2,
+        monto_usd: monto2,
+        moneda: metodosPago.find((m) => m.label === metodo2)?.moneda,
+      },
+    ];
 
     const { data: venta, error: ventaError } = await supabase
       .from("sales")
@@ -272,6 +310,86 @@ export default function VentasPage() {
               <span>Total Bs</span>
               <span className="font-semibold">{formatBs(totalBs)}</span>
             </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700">Pago dividido</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Método de pago 1
+                </label>
+                <select
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={metodo1}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setMetodo1(value);
+                    if (value === metodo2) {
+                      setMetodo2(getMetodoAlterno(value).label);
+                    }
+                  }}
+                >
+                  {metodosPago.map((m) => (
+                    <option key={m.label} value={m.label}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Monto método 1 (USD)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={monto1}
+                  onChange={(event) => {
+                    const value = Number(event.target.value || 0);
+                    const clamped = Math.min(Math.max(value, 0), totalUsd);
+                    setMonto1(clamped);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Método de pago 2
+                </label>
+                <select
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={metodo2}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setMetodo2(value);
+                    if (value === metodo1) {
+                      setMetodo1(getMetodoAlterno(value).label);
+                    }
+                  }}
+                >
+                  {metodosPago.map((m) => (
+                    <option key={m.label} value={m.label}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Monto método 2 (USD)
+                </label>
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-slate-100"
+                  value={monto2.toFixed(2)}
+                  readOnly
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              Total: {formatUsd(totalUsd)} (método 1 + método 2)
+            </p>
           </div>
 
           <div className="mt-4">

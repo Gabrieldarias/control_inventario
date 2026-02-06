@@ -50,7 +50,18 @@ export default function InventarioPage() {
     setSaving(true);
     setError("");
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("No se pudo validar el usuario.");
+      setSaving(false);
+      return;
+    }
+
     const payload = {
+      user_id: user.id,
       nombre: form.nombre,
       precio_compra: Number(form.precio_compra || 0),
       precio_venta: Number(form.precio_venta || 0),

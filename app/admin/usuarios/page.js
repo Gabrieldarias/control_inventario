@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminHeader from "../../../components/AdminHeader";
+import { createSupabaseBrowserClient } from "../../../lib/supabaseClient";
 
 const emptyForm = {
   id: "",

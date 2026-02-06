@@ -1,15 +1,25 @@
 {
-  "name": "tienda-mvp-serverless",
-  "version": "2.0.0",
-  "type": "module",
+  "name": "gestion-comercial",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "vercel dev",
-    "build": "sh build-env.sh",
-    "start": "vercel dev"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0",
-    "jsonwebtoken": "^9.0.0",
-    "dotenv": "^16.1.4"
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "jspdf": "^4.1.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4"
   }
 }

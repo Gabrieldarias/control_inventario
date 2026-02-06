@@ -23,11 +23,29 @@ export default function AdminUsuariosPage() {
 
   const isEdit = useMemo(() => Boolean(form.id), [form.id]);
 
+  const getAuthHeaders = async () => {
+    const supabase = createSupabaseBrowserClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {};
+    }
+
+    return {
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  };
+
   const cargarUsuarios = async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/users");
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch("/api/admin/users", {
+        headers: authHeaders,
+      });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || "No se pudieron cargar los usuarios.");
@@ -55,9 +73,13 @@ export default function AdminUsuariosPage() {
     setError("");
 
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch("/api/admin/users", {
         method: isEdit ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
         body: JSON.stringify(form),
       });
       const data = await response.json();
@@ -90,9 +112,13 @@ export default function AdminUsuariosPage() {
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar vendedor?")) return;
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch("/api/admin/users", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
         body: JSON.stringify({ id }),
       });
       const data = await response.json();

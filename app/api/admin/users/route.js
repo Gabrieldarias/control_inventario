@@ -5,21 +5,46 @@ import { createSupabaseAdminClient } from "../../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-const ensureAdmin = async () => {
+const getUserIdFromRequest = async (request) => {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.replace("Bearer ", "")
+    : null;
+
+  if (token) {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.auth.getUser(token);
+    if (error || !data?.user) {
+      return { error: "No autorizado", status: 401 };
+    }
+    return { userId: data.user.id };
+  }
+
   const supabase = createSupabaseRouteClient(cookies());
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) {
+  if (!session?.user) {
     return { error: "No autorizado", status: 401 };
   }
 
-  const { data: profile } = await supabase
+  return { userId: session.user.id };
+};
+
+const ensureAdmin = async (request) => {
+  const admin = createSupabaseAdminClient();
+  const { userId, error, status } = await getUserIdFromRequest(request);
+
+  if (!userId) {
+    return { error: error || "No autorizado", status: status || 401 };
+  }
+
+  const { data: profile } = await admin
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
-    .single();
+    .eq("id", userId)
+    .maybeSingle();
 
   if (profile?.role !== "admin") {
     return { error: "Sin permisos", status: 403 };
@@ -28,8 +53,8 @@ const ensureAdmin = async () => {
   return { ok: true };
 };
 
-export async function GET() {
-  const authCheck = await ensureAdmin();
+export async function GET(request) {
+  const authCheck = await ensureAdmin(request);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -65,7 +90,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const authCheck = await ensureAdmin();
+  const authCheck = await ensureAdmin(request);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -104,7 +129,7 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-  const authCheck = await ensureAdmin();
+  const authCheck = await ensureAdmin(request);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -147,7 +172,7 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
-  const authCheck = await ensureAdmin();
+  const authCheck = await ensureAdmin(request);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }

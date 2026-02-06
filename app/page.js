@@ -1,32 +1,49 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "../lib/supabaseClient";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "../lib/supabaseClient";
 
-export default async function Home() {
-  const supabase = createSupabaseServerClient(cookies());
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+export default function Home() {
+  const router = useRouter();
 
-  if (!session) {
-    redirect("/login");
-  }
+  useEffect(() => {
+    const redirectUser = async () => {
+      const supabase = createSupabaseBrowserClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .maybeSingle();
+      if (!session?.user) {
+        router.replace("/login");
+        return;
+      }
 
-  if (profile?.role === "admin") {
-    redirect("/admin/usuarios");
-  }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-  if (profile?.role === "vendedor") {
-    redirect("/dashboard/ventas");
-  }
+      if (profile?.role === "admin") {
+        router.replace("/admin/usuarios");
+        return;
+      }
 
-  redirect("/login");
+      if (profile?.role === "vendedor") {
+        router.replace("/dashboard/ventas");
+        return;
+      }
+
+      router.replace("/login");
+    };
+
+    redirectUser();
+  }, [router]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">
+      Cargando...
+    </div>
+  );
 }

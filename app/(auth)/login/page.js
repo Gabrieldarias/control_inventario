@@ -13,6 +13,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const ensureProfile = async (supabase, user) => {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      throw new Error("No se pudo obtener el perfil del usuario.");
+    }
+
+    if (profile?.role) {
+      return profile.role;
+    }
+
+    const nombrePersona = user.email?.split("@")[0] || "Vendedor";
+    const { error: insertError } = await supabase.from("profiles").insert({
+      id: user.id,
+      role: "vendedor",
+      nombre_local: "Mi local",
+      nombre_persona: nombrePersona,
+      telefono: null,
+    });
+
+    if (insertError) {
+      throw new Error("No se pudo crear el perfil del usuario.");
+    }
+
+    return "vendedor";
+  };
+
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createSupabaseBrowserClient();
@@ -21,15 +52,11 @@ export default function LoginPage() {
       } = await supabase.auth.getSession();
 
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .maybeSingle();
+        const role = await ensureProfile(supabase, session.user);
 
-        if (profile?.role === "admin") {
+        if (role === "admin") {
           router.replace("/admin/usuarios");
-        } else if (profile?.role === "vendedor") {
+        } else if (role === "vendedor") {
           router.replace("/dashboard/ventas");
         }
       }
@@ -55,25 +82,16 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      setError("No se pudo obtener el perfil del usuario.");
+    let role = "vendedor";
+    try {
+      role = await ensureProfile(supabase, data.user);
+    } catch (err) {
+      setError(err.message);
       setLoading(false);
       return;
     }
 
-    if (!profile?.role) {
-      setError("Tu usuario no tiene perfil. Contacta al administrador.");
-      setLoading(false);
-      return;
-    }
-
-    if (profile.role === "admin") {
+    if (role === "admin") {
       router.replace("/admin/usuarios");
     } else {
       router.replace("/dashboard/ventas");

@@ -13,6 +13,7 @@ export default function VentasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   const cargarInventario = async () => {
     setLoading(true);
@@ -168,11 +169,26 @@ export default function VentasPage() {
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <section className="card p-6">
           <h2 className="text-lg font-semibold text-slate-900">Productos</h2>
+          <div className="mt-4">
+            <input
+              type="text"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              placeholder="Buscar producto por nombre..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
           {loading ? (
             <p className="mt-4 text-sm text-slate-500">Cargando inventario...</p>
           ) : (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {inventario.map((producto) => (
+              {inventario
+                .filter((producto) =>
+                  producto.nombre
+                    ?.toLowerCase()
+                    .includes(search.trim().toLowerCase())
+                )
+                .map((producto) => (
                 <button
                   key={producto.id}
                   type="button"

@@ -20,6 +20,7 @@ export default function InventarioPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   const cargarInventario = async () => {
     setLoading(true);
@@ -148,6 +149,16 @@ export default function InventarioPage() {
         </div>
       </header>
 
+      <section className="card p-4">
+        <input
+          type="text"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+          placeholder="Buscar producto por nombre..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </section>
+
       <section className="card p-6">
         <h2 className="text-lg font-semibold text-slate-900">
           {form.id ? "Editar artículo" : "Nuevo artículo"}
@@ -235,7 +246,13 @@ export default function InventarioPage() {
                 </tr>
               </thead>
               <tbody className="text-slate-700">
-                {items.map((item) => (
+                {items
+                  .filter((item) =>
+                    item.nombre
+                      ?.toLowerCase()
+                      .includes(search.trim().toLowerCase())
+                  )
+                  .map((item) => (
                   <tr key={item.id} className="border-t border-slate-100">
                     <td className="py-3">{item.nombre}</td>
                     <td>{item.stock}</td>

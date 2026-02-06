@@ -25,7 +25,7 @@ export default function LoginPage() {
           .from("profiles")
           .select("role")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profile?.role === "admin") {
           router.replace("/admin/usuarios");
@@ -59,10 +59,16 @@ export default function LoginPage() {
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile?.role) {
-      setError("No se encontró el perfil del usuario.");
+    if (profileError) {
+      setError("No se pudo obtener el perfil del usuario.");
+      setLoading(false);
+      return;
+    }
+
+    if (!profile?.role) {
+      setError("Tu usuario no tiene perfil. Contacta al administrador.");
       setLoading(false);
       return;
     }

@@ -18,11 +18,15 @@ export default async function Home() {
     .from("profiles")
     .select("role")
     .eq("id", session.user.id)
-    .single();
+    .maybeSingle();
 
   if (profile?.role === "admin") {
     redirect("/admin/usuarios");
   }
 
-  redirect("/dashboard/ventas");
+  if (profile?.role === "vendedor") {
+    redirect("/dashboard/ventas");
+  }
+
+  redirect("/login");
 }

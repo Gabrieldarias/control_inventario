@@ -34,6 +34,18 @@ export default function VentasPage() {
     cargarInventario();
   }, []);
 
+  useEffect(() => {
+    const stored = localStorage.getItem("tasa_bs");
+    if (stored) {
+      setTasaBs(Number(stored));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tasaBs === "" || Number.isNaN(Number(tasaBs))) return;
+    localStorage.setItem("tasa_bs", String(tasaBs));
+  }, [tasaBs]);
+
   const agregarProducto = (producto) => {
     if (producto.stock <= 0) return;
     setCarrito((prev) => {

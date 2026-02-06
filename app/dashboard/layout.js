@@ -19,7 +19,11 @@ export default async function DashboardLayout({ children }) {
     .from("profiles")
     .select("role")
     .eq("id", session.user.id)
-    .single();
+    .maybeSingle();
+
+  if (!profile?.role) {
+    redirect("/login?perfil=missing");
+  }
 
   if (profile?.role !== "vendedor") {
     redirect("/admin/usuarios");

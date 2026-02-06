@@ -18,7 +18,11 @@ export default async function AdminLayout({ children }) {
     .from("profiles")
     .select("role")
     .eq("id", session.user.id)
-    .single();
+    .maybeSingle();
+
+  if (!profile?.role) {
+    redirect("/login?perfil=missing");
+  }
 
   if (profile?.role !== "admin") {
     redirect("/dashboard/ventas");

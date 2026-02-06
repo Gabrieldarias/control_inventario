@@ -46,19 +46,23 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const supabase = createSupabaseBrowserClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        const role = await ensureProfile(supabase, session.user);
+        if (session?.user) {
+          const role = await ensureProfile(supabase, session.user);
 
-        if (role === "admin") {
-          router.replace("/admin/usuarios");
-        } else if (role === "vendedor") {
-          router.replace("/dashboard/ventas");
+          if (role === "admin") {
+            router.replace("/admin/usuarios");
+          } else if (role === "vendedor") {
+            router.replace("/dashboard/ventas");
+          }
         }
+      } catch (err) {
+        setError(err.message || "No se pudo validar la sesión.");
       }
     };
 

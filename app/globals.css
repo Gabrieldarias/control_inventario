@@ -36,3 +36,17 @@ body {
 .btn-outline {
   @apply rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100;
 }
+
+.btn-logout {
+  background: #c96047;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.2s ease-in-out;
+}
+
+.btn-logout:hover {
+  background: #b4553f;
+}

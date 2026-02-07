@@ -45,7 +45,7 @@ export default function Sidebar() {
             );
           })}
         </nav>
-        <button className="btn-outline mt-6" onClick={handleLogout} type="button">
+        <button className="btn-logout mt-6" onClick={handleLogout} type="button">
           Cerrar sesión
         </button>
       </div>

@@ -195,19 +195,6 @@ export default function VentasPage() {
       return;
     }
 
-    const pagos = paymentDetails.pagoDividido
-      ? [
-          {
-            metodo: paymentDetails.metodo1,
-            monto_usd: monto1Usd,
-          },
-          {
-            metodo: paymentDetails.metodo2,
-            monto_usd: paymentDetails.monto2,
-          },
-        ]
-      : [{ metodo: paymentDetails.metodo1, monto_usd: totalUsd }];
-
     const { data: venta, error: insertError } = await supabase
       .from("sales")
       .insert({
@@ -217,7 +204,6 @@ export default function VentasPage() {
         moneda_usada: moneda,
         tasa_bs: Number(tasaBs || 0),
         fecha: new Date().toISOString(),
-        pagos,
       })
       .select()
       .single();
@@ -546,28 +532,32 @@ export default function VentasPage() {
               </div>
             )}
 
-            {!paymentDetails.pagoDividido && (
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Monto recibido ({monedaMetodo1})
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={montoRecibido}
-                  onChange={(event) => setMontoRecibido(event.target.value)}
-                  placeholder={`Ej: ${monedaMetodo1 === "BS" ? "500" : "20"}`}
-                />
-                {montoRecibido && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    {monedaMetodo1 === "BS"
-                      ? `≈ ${formatUsd(montoRecibidoUsd)}`
-                      : `≈ ${formatBs(montoRecibidoUsd * Number(tasaBs || 0))}`}
-                  </p>
-                )}
-              </div>
-            )}
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                Monto recibido ({monedaMetodo1})
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={montoRecibido}
+                onChange={(event) => setMontoRecibido(event.target.value)}
+                placeholder={`Ej: ${monedaMetodo1 === "BS" ? "500" : "20"}`}
+                disabled={paymentDetails.pagoDividido}
+              />
+              {paymentDetails.pagoDividido && (
+                <p className="mt-1 text-xs text-slate-500">
+                  El cambio en pago dividido se calcula con la suma de métodos.
+                </p>
+              )}
+              {montoRecibido && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {monedaMetodo1 === "BS"
+                    ? `≈ ${formatUsd(montoRecibidoUsd)}`
+                    : `≈ ${formatBs(montoRecibidoUsd * Number(tasaBs || 0))}`}
+                </p>
+              )}
+            </div>
 
             <p className="text-xs text-slate-500">
               Total: {formatUsd(totalUsd)}

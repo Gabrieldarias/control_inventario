@@ -129,12 +129,11 @@ export default function VentasPage() {
   }, [montoRecibido]);
 
   useEffect(() => {
-    const clamped = Math.min(Math.max(monto1Input, 0), totalUsd);
-    if (clamped !== monto1Input) {
-      setPaymentDetails((prev) => ({ ...prev, monto1: clamped }));
-      setMontoRecibido(String(clamped));
+    if (monto1Input < 0 || Number.isNaN(monto1Input)) {
+      setPaymentDetails((prev) => ({ ...prev, monto1: 0 }));
+      setMontoRecibido("0");
     }
-  }, [monto1Input, totalUsd]);
+  }, [monto1Input]);
 
   useEffect(() => {
     if (paymentDetails.pagoDividido && paymentDetails.metodo1 === paymentDetails.metodo2) {
@@ -170,8 +169,13 @@ export default function VentasPage() {
         setSaving(false);
         return;
       }
-      if (monto2Number <= 0 || monto1UsdCalc <= 0) {
-        setError("Los montos deben ser mayores a 0.");
+      if (monto1UsdCalc <= 0) {
+        setError("El monto del método 1 debe ser mayor a 0.");
+        setSaving(false);
+        return;
+      }
+      if (monto1UsdCalc < totalUsd && monto2Number <= 0) {
+        setError("El monto del método 2 debe ser mayor a 0.");
         setSaving(false);
         return;
       }

@@ -64,11 +64,9 @@ export default function VentasPage() {
   }, [tasaBs]);
 
   const agregarProducto = (producto) => {
-    if (producto.stock <= 0) return;
     setCarrito((prev) => {
       const existente = prev.find((item) => item.id === producto.id);
       if (existente) {
-        if (existente.cantidad + 1 > producto.stock) return prev;
         return prev.map((item) =>
           item.id === producto.id
             ? { ...item, cantidad: item.cantidad + 1 }
@@ -83,12 +81,10 @@ export default function VentasPage() {
   };
 
   const actualizarCantidad = (id, cantidad) => {
-    const item = carrito.find((entry) => entry.id === id);
-    const max = item?.stock || 1;
     setCarrito((prev) =>
       prev.map((item) =>
         item.id === id
-          ? { ...item, cantidad: Math.max(1, Math.min(max, Number(cantidad))) }
+          ? { ...item, cantidad: Math.max(1, Number(cantidad)) }
           : item
       )
     );
@@ -105,6 +101,8 @@ export default function VentasPage() {
   const totalBs = totalUsd * Number(tasaBs || 0);
   const getMetodoAlterno = (actual) =>
     metodosPago.find((m) => m.label !== actual) || metodosPago[0];
+  const monedaMetodo1 = metodosPago.find((m) => m.label === paymentDetails.metodo1)?.moneda;
+  const monedaMetodo2 = metodosPago.find((m) => m.label === paymentDetails.metodo2)?.moneda;
   const monto1 = paymentDetails.pagoDividido
     ? Math.max(0, totalUsd - Number(paymentDetails.monto2 || 0))
     : totalUsd;
@@ -377,6 +375,11 @@ export default function VentasPage() {
                 ) : (
                   <p className="mt-1 text-sm font-semibold">{formatUsd(totalUsd)}</p>
                 )}
+                {monedaMetodo1 === "BS" && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    ≈ {formatBs(monto1 * Number(tasaBs || 0))}
+                  </p>
+                )}
               </div>
               <div className="md:col-span-2 flex items-center gap-2">
                 <input
@@ -443,6 +446,11 @@ export default function VentasPage() {
                       }));
                     }}
                   />
+                  {monedaMetodo2 === "BS" && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      ≈ {formatBs(Number(paymentDetails.monto2 || 0) * Number(tasaBs || 0))}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

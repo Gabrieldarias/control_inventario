@@ -10,6 +10,8 @@ export default function FacturasPage() {
   const [ventas, setVentas] = useState([]);
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   const cargarFacturas = async () => {
     setLoading(true);
@@ -175,6 +177,22 @@ export default function FacturasPage() {
     }
   };
 
+  const ventasFiltradas = ventas.filter((venta) => {
+    if (!fechaDesde && !fechaHasta) return true;
+    const fechaVenta = new Date(venta.fecha);
+    if (fechaDesde) {
+      const inicio = new Date(fechaDesde);
+      inicio.setHours(0, 0, 0, 0);
+      if (fechaVenta < inicio) return false;
+    }
+    if (fechaHasta) {
+      const fin = new Date(fechaHasta);
+      fin.setHours(23, 59, 59, 999);
+      if (fechaVenta > fin) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <header>
@@ -184,17 +202,40 @@ export default function FacturasPage() {
         </p>
       </header>
 
+      <section className="card p-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Desde</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              value={fechaDesde}
+              onChange={(event) => setFechaDesde(event.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Hasta</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              value={fechaHasta}
+              onChange={(event) => setFechaHasta(event.target.value)}
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="card p-6">
         {loading ? (
           <p className="text-sm text-slate-500">Cargando facturas...</p>
         ) : (
           <div className="space-y-4">
-            {ventas.length === 0 ? (
+            {ventasFiltradas.length === 0 ? (
               <p className="text-sm text-slate-500">
                 No hay facturas generadas todavía.
               </p>
             ) : (
-              ventas.map((venta) => (
+              ventasFiltradas.map((venta) => (
                 <div
                   key={venta.id}
                   className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center md:justify-between"

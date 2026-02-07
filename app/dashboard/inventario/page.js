@@ -162,19 +162,51 @@ export default function InventarioPage() {
   };
 
   const generarPdf = (preview = true) => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const margin = 14;
+    const pageWidth = 210;
+    const fechaTexto = new Date().toLocaleString("es-VE");
+
+    const addDivider = (y) => {
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+    };
+
+    let y = 18;
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text("Inventario actual", 14, 20);
+    doc.text("Inventario", margin, y);
+    doc.setFontSize(12);
+    doc.text("Reporte de existencias", margin, y + 7);
+
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    let y = 30;
+    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y, { align: "right" });
+
+    y += 16;
+    addDivider(y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto", margin, y);
+    doc.text("Stock", margin + 95, y);
+    doc.text("Compra", margin + 120, y);
+    doc.text("Venta", margin + 155, y);
+    doc.setFont("helvetica", "normal");
+    y += 4;
+    addDivider(y);
+    y += 6;
+
     items.forEach((item) => {
-      doc.text(
-        `${item.nombre} | Stock: ${item.stock} | Venta: ${formatUsd(
-          item.precio_venta
-        )}`,
-        14,
-        y
-      );
+      if (y > 270) {
+        doc.addPage();
+        y = 18;
+      }
+      doc.text(String(item.nombre || "Producto"), margin, y);
+      doc.text(String(item.stock ?? 0), margin + 95, y);
+      doc.text(formatUsd(item.precio_compra), margin + 120, y);
+      doc.text(formatUsd(item.precio_venta), margin + 155, y);
       y += 6;
     });
     if (preview) {

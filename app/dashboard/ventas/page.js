@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "../../../lib/supabaseClient";
 import { formatBs, formatUsd } from "../../../utils/currency";
+import { jsPDF } from "jspdf";
 
 const supabase = createSupabaseBrowserClient();
 
 export default function VentasPage() {
   const [inventario, setInventario] = useState([]);
   const [carrito, setCarrito] = useState([]);
-  const [tasaBs, setTasaBs] = useState(36.5);
+  const [tasaBs, setTasaBs] = useState(450);
   const [moneda, setMoneda] = useState("USD");
   const [paymentDetails, setPaymentDetails] = useState({
     metodo1: "Pago Movil",
@@ -144,6 +145,131 @@ export default function VentasPage() {
     }
   }, [paymentDetails.pagoDividido, paymentDetails.metodo1, paymentDetails.metodo2]);
 
+  const generarPdfVenta = ({
+    ventaId,
+    fecha,
+    totalUsd,
+    totalBs,
+    tasaBs,
+    monedaUsada,
+    items,
+    pagos,
+    nombreLocal,
+    vendedor,
+  }) => {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const margin = 14;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - margin * 2;
+    const fechaTexto = new Date(fecha).toLocaleString("es-VE");
+    const cliente = "Consumidor final";
+    const totalPagadoUsd = pagos.reduce(
+      (acc, pago) => acc + Number(pago.monto_usd || 0),
+      0
+    );
+    const cambioUsd = Math.max(0, totalPagadoUsd - Number(totalUsd || 0));
+
+    const addDivider = (y) => {
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+    };
+
+    let y = 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(nombreLocal || "Factura", margin, y);
+    doc.setFontSize(12);
+    doc.text("Factura de venta", margin, y + 7);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y, { align: "right" });
+    doc.text(`Venta #${ventaId.slice(0, 6)}`, pageWidth - margin, y + 6, {
+      align: "right",
+    });
+
+    y += 16;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalles", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+    doc.text(`Cliente: ${cliente}`, margin, y);
+    doc.text(`Vendedor: ${vendedor || "Vendedor"}`, margin + contentWidth / 2, y);
+    y += 5;
+    doc.text(`Moneda: ${monedaUsada}`, margin, y);
+    doc.text(`Tasa Bs: ${tasaBs}`, margin + contentWidth / 2, y);
+
+    y += 8;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Productos", margin, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto", margin, y);
+    doc.text("Cant.", margin + 90, y);
+    doc.text("P. Unit", margin + 115, y);
+    doc.text("Subtotal", margin + 150, y);
+    doc.setFont("helvetica", "normal");
+    y += 4;
+    addDivider(y);
+    y += 6;
+
+    items.forEach((item) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 18;
+      }
+      const subtotal = Number(item.precio_unitario || 0) * Number(item.cantidad || 0);
+      doc.text(String(item.nombre || "Producto"), margin, y);
+      doc.text(String(item.cantidad || 0), margin + 90, y);
+      doc.text(formatUsd(item.precio_unitario), margin + 115, y);
+      doc.text(formatUsd(subtotal), margin + 150, y);
+      y += 6;
+    });
+
+    y += 4;
+    addDivider(y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Total USD: ${formatUsd(totalUsd)}`, margin, y);
+    doc.text(`Total Bs: ${formatBs(totalBs)}`, margin + 80, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("Métodos de pago", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+
+    pagos.forEach((pago) => {
+      doc.text(`${pago.metodo}: ${formatUsd(pago.monto_usd)}`, margin, y);
+      y += 6;
+    });
+
+    if (cambioUsd > 0) {
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("Cambio a entregar", margin, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+      doc.text(`USD: ${formatUsd(cambioUsd)}`, margin, y);
+      doc.text(`BS: ${formatBs(cambioUsd * Number(tasaBs || 0))}`, margin + 60, y);
+    }
+
+    const blobUrl = doc.output("bloburl");
+    window.open(blobUrl, "_blank", "noopener,noreferrer");
+  };
+
   const guardarVenta = async () => {
     if (carrito.length === 0) return;
     setSaving(true);
@@ -204,6 +330,12 @@ export default function VentasPage() {
       setSaving(false);
       return;
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("nombre_local, nombre_persona")
+      .eq("id", user.id)
+      .single();
 
     const { data: venta, error: insertError } = await supabase
       .from("sales")
@@ -271,6 +403,26 @@ export default function VentasPage() {
       setSaving(false);
       return;
     }
+
+    const pagos = paymentDetails.pagoDividido
+      ? [
+          { metodo: paymentDetails.metodo1, monto_usd: monto1UsdCalc },
+          { metodo: paymentDetails.metodo2, monto_usd: monto2Number },
+        ]
+      : [{ metodo: paymentDetails.metodo1, monto_usd: monto1UsdCalc }];
+
+    generarPdfVenta({
+      ventaId: venta.id,
+      fecha: venta.fecha,
+      totalUsd,
+      totalBs,
+      tasaBs: tasa,
+      monedaUsada: moneda,
+      items: carrito,
+      pagos,
+      nombreLocal: profile?.nombre_local,
+      vendedor: profile?.nombre_persona,
+    });
 
     setCarrito([]);
     setPaymentDetails({

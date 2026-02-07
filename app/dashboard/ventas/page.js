@@ -223,7 +223,9 @@ export default function VentasPage() {
       .single();
 
     if (insertError || !venta) {
-      setError("No se pudo guardar la venta.");
+      setError(
+        `No se pudo guardar la venta: ${insertError?.message || "error"}`
+      );
       setSaving(false);
       return;
     }
@@ -245,7 +247,9 @@ export default function VentasPage() {
       .insert(itemsPayload);
 
     if (itemsError) {
-      setError("No se pudieron guardar los productos de la venta.");
+      setError(
+        `No se pudieron guardar los productos de la venta: ${itemsError.message}`
+      );
       setSaving(false);
       return;
     }

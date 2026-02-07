@@ -139,6 +139,9 @@ export default function VentasPage() {
     setSaving(true);
     setError("");
 
+    const tasa = Number(tasaBs || 0);
+    const monto2 = Number(paymentDetails.monto2 || 0);
+
     if (totalUsd <= 0) {
       setError("El total debe ser mayor a 0.");
       setSaving(false);
@@ -151,12 +154,12 @@ export default function VentasPage() {
         setSaving(false);
         return;
       }
-      if (paymentDetails.monto2 <= 0 || monto1 <= 0) {
+      if (monto2 <= 0 || monto1 <= 0) {
         setError("Los montos deben ser mayores a 0.");
         setSaving(false);
         return;
       }
-      if (paymentDetails.monto2 > totalUsd) {
+      if (monto2 > totalUsd) {
         setError("El monto del segundo método no puede superar el total.");
         setSaving(false);
         return;
@@ -180,7 +183,7 @@ export default function VentasPage() {
         total_usd: totalUsd,
         total_bs: totalBs,
         moneda_usada: moneda,
-        tasa_bs: Number(tasaBs || 0),
+        tasa_bs: tasa,
         fecha: new Date().toISOString(),
       })
       .select()
@@ -194,10 +197,16 @@ export default function VentasPage() {
       return;
     }
 
-    await supabase.from("invoices").insert({
+    const { error: invoiceError } = await supabase.from("invoices").insert({
       sale_id: venta.id,
       user_id: user.id,
     });
+
+    if (invoiceError) {
+      setError(`No se pudo generar la factura: ${invoiceError.message}`);
+      setSaving(false);
+      return;
+    }
 
     const itemsPayload = carrito.map((item) => ({
       sale_id: venta.id,
@@ -218,12 +227,20 @@ export default function VentasPage() {
       return;
     }
 
-    for (const item of carrito) {
-      const nuevoStock = Math.max(0, item.stock - item.cantidad);
-      await supabase
-        .from("inventory")
-        .update({ stock: nuevoStock })
-        .eq("id", item.id);
+    const stockUpdates = await Promise.all(
+      carrito.map((item) =>
+        supabase
+          .from("inventory")
+          .update({ stock: item.stock - item.cantidad })
+          .eq("id", item.id)
+      )
+    );
+
+    const stockError = stockUpdates.find((result) => result.error)?.error;
+    if (stockError) {
+      setError(`No se pudo actualizar el stock: ${stockError.message}`);
+      setSaving(false);
+      return;
     }
 
     setCarrito([]);

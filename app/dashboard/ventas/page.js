@@ -218,9 +218,64 @@ export default function VentasPage() {
     });
 
     if (ventaError) {
-      setError("No se pudo guardar la venta.");
-      setSaving(false);
-      return;
+      const message = ventaError.message || "";
+      const isNotFound = message.includes("404") || message.toLowerCase().includes("not found");
+
+      if (!isNotFound) {
+        setError("No se pudo guardar la venta.");
+        setSaving(false);
+        return;
+      }
+
+      const { data: venta, error: insertError } = await supabase
+        .from("sales")
+        .insert({
+          user_id: user.id,
+          total_usd: totalUsd,
+          total_bs: totalBs,
+          moneda_usada: moneda,
+          tasa_bs: Number(tasaBs || 0),
+          fecha: new Date().toISOString(),
+          pagos,
+        })
+        .select()
+        .single();
+
+      if (insertError || !venta) {
+        setError("No se pudo guardar la venta.");
+        setSaving(false);
+        return;
+      }
+
+      await supabase.from("invoices").insert({
+        sale_id: venta.id,
+        user_id: user.id,
+      });
+
+      const itemsPayload = carrito.map((item) => ({
+        sale_id: venta.id,
+        inventory_id: item.id,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio_unitario,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("sale_items")
+        .insert(itemsPayload);
+
+      if (itemsError) {
+        setError("No se pudieron guardar los productos de la venta.");
+        setSaving(false);
+        return;
+      }
+
+      for (const item of carrito) {
+        const nuevoStock = Math.max(0, item.stock - item.cantidad);
+        await supabase
+          .from("inventory")
+          .update({ stock: nuevoStock })
+          .eq("id", item.id);
+      }
     }
 
     setCarrito([]);

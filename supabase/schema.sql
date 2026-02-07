@@ -361,6 +361,7 @@ declare
   v_inventory_id uuid;
   v_cantidad integer;
   v_precio_unitario numeric(10, 2);
+  v_updated_stock integer;
   v_pago jsonb;
   v_metodo text;
   v_monto numeric(10, 2);
@@ -409,11 +410,11 @@ begin
       raise exception 'Item invalido';
     end if;
 
-    perform 1
-    from inventory
+    update inventory
+    set stock = stock - v_cantidad
     where id = v_inventory_id
       and user_id = v_user_id
-    for update;
+    returning stock into v_updated_stock;
 
     if not found then
       raise exception 'Producto no pertenece al usuario';
@@ -421,11 +422,6 @@ begin
 
     insert into sale_items (sale_id, inventory_id, cantidad, precio_unitario)
     values (v_sale_id, v_inventory_id, v_cantidad, v_precio_unitario);
-
-    update inventory
-    set stock = stock - v_cantidad
-    where id = v_inventory_id
-      and user_id = v_user_id;
   end loop;
 
   for v_pago in select * from jsonb_array_elements(v_pagos)

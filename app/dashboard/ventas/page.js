@@ -9,7 +9,7 @@ const supabase = createSupabaseBrowserClient();
 export default function VentasPage() {
   const [inventario, setInventario] = useState([]);
   const [carrito, setCarrito] = useState([]);
-  const [tasaBs, setTasaBs] = useState(500);
+  const [tasaBs, setTasaBs] = useState(36.5);
   const [moneda, setMoneda] = useState("USD");
   const [paymentDetails, setPaymentDetails] = useState({
     metodo1: "Pago Movil",
@@ -17,7 +17,6 @@ export default function VentasPage() {
     pagoDividido: false,
     monto2: 0,
   });
-  const [montoRecibido, setMontoRecibido] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -102,30 +101,9 @@ export default function VentasPage() {
   const totalBs = totalUsd * Number(tasaBs || 0);
   const getMetodoAlterno = (actual) =>
     metodosPago.find((m) => m.label !== actual) || metodosPago[0];
-  const monedaMetodo1 =
-    metodosPago.find((m) => m.label === paymentDetails.metodo1)?.moneda ||
-    "USD";
-  const monedaMetodo2 =
-    metodosPago.find((m) => m.label === paymentDetails.metodo2)?.moneda ||
-    "USD";
-  const monto1Usd = paymentDetails.pagoDividido
+  const monto1 = paymentDetails.pagoDividido
     ? Math.max(0, totalUsd - Number(paymentDetails.monto2 || 0))
     : totalUsd;
-  const montoRecibidoUsd = (() => {
-    const value = Number(montoRecibido || 0);
-    if (!value || Number.isNaN(value)) return 0;
-    if (monedaMetodo1 === "BS") {
-      const rate = Number(tasaBs || 0);
-      return rate > 0 ? value / rate : 0;
-    }
-    return value;
-  })();
-  const totalPagadoUsd = paymentDetails.pagoDividido
-    ? montoRecibidoUsd + Number(paymentDetails.monto2 || 0)
-    : montoRecibidoUsd > 0
-      ? montoRecibidoUsd
-      : totalUsd;
-  const cambioUsd = Math.max(0, totalPagadoUsd - totalUsd);
 
   useEffect(() => {
     if (!paymentDetails.pagoDividido) {
@@ -173,7 +151,7 @@ export default function VentasPage() {
         setSaving(false);
         return;
       }
-      if (paymentDetails.monto2 <= 0 || monto1Usd <= 0) {
+      if (paymentDetails.monto2 <= 0 || monto1 <= 0) {
         setError("Los montos deben ser mayores a 0.");
         setSaving(false);
         return;
@@ -195,57 +173,32 @@ export default function VentasPage() {
       return;
     }
 
-    const { data: venta, error: insertError } = await supabase
-      .from("sales")
-      .insert({
-        user_id: user.id,
-        total_usd: totalUsd,
-        total_bs: totalBs,
-        moneda_usada: moneda,
-        tasa_bs: Number(tasaBs || 0),
-        fecha: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    const pagos = paymentDetails.pagoDividido
+      ? [
+          {
+            metodo: paymentDetails.metodo1,
+            monto_usd: monto1,
+          },
+          {
+            metodo: paymentDetails.metodo2,
+            monto_usd: paymentDetails.monto2,
+          },
+        ]
+      : [{ metodo: paymentDetails.metodo1, monto_usd: totalUsd }];
 
-    if (insertError || !venta) {
-      setError(
-        `No se pudo guardar la venta: ${insertError?.message || "error"}`
-      );
-      setSaving(false);
-      return;
-    }
-
-    await supabase.from("invoices").insert({
-      sale_id: venta.id,
-      user_id: user.id,
+    const { error: ventaError } = await supabase.rpc("process_sale", {
+      p_items: carrito,
+      p_total_usd: totalUsd,
+      p_total_bs: totalBs,
+      p_tasa: Number(tasaBs || 0),
+      p_moneda: moneda,
+      p_pagos: pagos,
     });
 
-    const itemsPayload = carrito.map((item) => ({
-      sale_id: venta.id,
-      inventory_id: item.id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("sale_items")
-      .insert(itemsPayload);
-
-    if (itemsError) {
-      setError(
-        `No se pudieron guardar los productos de la venta: ${itemsError.message}`
-      );
+    if (ventaError) {
+      setError("No se pudo guardar la venta.");
       setSaving(false);
       return;
-    }
-
-    for (const item of carrito) {
-      const nuevoStock = Math.max(0, item.stock - item.cantidad);
-      await supabase
-        .from("inventory")
-        .update({ stock: nuevoStock })
-        .eq("id", item.id);
     }
 
     setCarrito([]);
@@ -255,7 +208,6 @@ export default function VentasPage() {
       pagoDividido: false,
       monto2: 0,
     });
-    setMontoRecibido("");
     await cargarInventario();
     setSaving(false);
   };
@@ -409,40 +361,17 @@ export default function VentasPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  Monto método 1 ({monedaMetodo1})
+                  Monto método 1 (USD)
                 </label>
                 {paymentDetails.pagoDividido ? (
                   <input
                     type="number"
                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-slate-100"
-                    value={
-                      monedaMetodo1 === "BS"
-                        ? (monto1Usd * Number(tasaBs || 0)).toFixed(2)
-                        : monto1Usd.toFixed(2)
-                    }
+                    value={monto1.toFixed(2)}
                     readOnly
                   />
                 ) : (
-                  <input
-                    type="number"
-                    min="0"
-                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                    value={
-                      monedaMetodo1 === "BS"
-                        ? (totalUsd * Number(tasaBs || 0)).toFixed(2)
-                        : totalUsd
-                    }
-                    readOnly
-                  />
-                )}
-                {monedaMetodo1 === "BS" ? (
-                  <p className="mt-1 text-xs text-slate-500">
-                    ≈ {formatUsd(monto1Usd)}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-500">
-                    ≈ {formatBs(monto1Usd * Number(tasaBs || 0))}
-                  </p>
+                  <p className="mt-1 text-sm font-semibold">{formatUsd(totalUsd)}</p>
                 )}
               </div>
               <div className="md:col-span-2 flex items-center gap-2">
@@ -494,75 +423,29 @@ export default function VentasPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700">
-                    Monto método 2 ({monedaMetodo2})
+                    Monto método 2 (USD)
                   </label>
                   <input
                     type="number"
                     min="0"
                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                    value={
-                      monedaMetodo2 === "BS"
-                        ? (Number(paymentDetails.monto2 || 0) * Number(tasaBs || 0)).toFixed(2)
-                        : paymentDetails.monto2
-                    }
+                    value={paymentDetails.monto2}
                     onChange={(event) => {
                       const value = Number(event.target.value || 0);
-                      const rate = Number(tasaBs || 0);
-                      const usdValue =
-                        monedaMetodo2 === "BS" && rate > 0
-                          ? value / rate
-                          : value;
-                      const clamped = Math.min(Math.max(usdValue, 0), totalUsd);
+                      const clamped = Math.min(Math.max(value, 0), totalUsd);
                       setPaymentDetails((prev) => ({
                         ...prev,
                         monto2: clamped,
                       }));
                     }}
                   />
-                  {monedaMetodo2 === "BS" ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      ≈ {formatUsd(Number(paymentDetails.monto2 || 0))}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-500">
-                      ≈ {formatBs(Number(paymentDetails.monto2 || 0) * Number(tasaBs || 0))}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-medium text-slate-700">
-                Monto recibido ({monedaMetodo1})
-              </label>
-              <input
-                type="number"
-                min="0"
-                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                value={montoRecibido}
-                onChange={(event) => setMontoRecibido(event.target.value)}
-                placeholder={`Ej: ${monedaMetodo1 === "BS" ? "500" : "20"}`}
-              />
-              {montoRecibido && (
-                <p className="mt-1 text-xs text-slate-500">
-                  {monedaMetodo1 === "BS"
-                    ? `≈ ${formatUsd(montoRecibidoUsd)}`
-                    : `≈ ${formatBs(montoRecibidoUsd * Number(tasaBs || 0))}`}
-                </p>
-              )}
-            </div>
-
             <p className="text-xs text-slate-500">
               Total: {formatUsd(totalUsd)}
             </p>
-            {cambioUsd > 0 && (
-              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                <p className="font-semibold">Cambio a entregar:</p>
-                <p>USD: {formatUsd(cambioUsd)}</p>
-                <p>BS: {formatBs(cambioUsd * Number(tasaBs || 0))}</p>
-              </div>
-            )}
           </div>
 
           <div className="mt-4">

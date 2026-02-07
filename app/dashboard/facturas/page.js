@@ -31,7 +31,7 @@ export default function FacturasPage() {
     const { data } = await supabase
       .from("sales")
       .select(
-        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre))"
+        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre)), payments(metodo, monto_usd), profiles:profiles!sales_user_id_fkey(nombre_persona, nombre_local)"
       )
       .order("fecha", { ascending: false });
 
@@ -45,29 +45,128 @@ export default function FacturasPage() {
   }, []);
 
   const generarFactura = (venta, preview = true) => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(perfil?.nombre_local || "Factura", 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Fecha: ${new Date(venta.fecha).toLocaleString("es-VE")}`, 14, 28);
-    doc.text(`Moneda usada: ${venta.moneda_usada}`, 14, 34);
-    doc.text(`Tasa Bs: ${venta.tasa_bs}`, 14, 40);
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const margin = 14;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - margin * 2;
+    const fechaTexto = new Date(venta.fecha).toLocaleString("es-VE");
+    const nombreLocal =
+      venta.profiles?.nombre_local || perfil?.nombre_local || "Factura";
+    const vendedor = venta.profiles?.nombre_persona || "Vendedor";
+    const cliente = "Consumidor final";
+    const pagos = venta.payments || [];
+    const totalPagadoUsd = pagos.reduce(
+      (acc, pago) => acc + Number(pago.monto_usd || 0),
+      0
+    );
+    const cambioUsd = Math.max(0, totalPagadoUsd - Number(venta.total_usd || 0));
 
-    let y = 50;
+    const addDivider = (y) => {
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+    };
+
+    let y = 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(nombreLocal, margin, y);
+    doc.setFontSize(12);
+    doc.text("Factura de venta", margin, y + 7);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y, { align: "right" });
+    doc.text(`Venta #${venta.id.slice(0, 6)}`, pageWidth - margin, y + 6, {
+      align: "right",
+    });
+
+    y += 16;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalles", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+    doc.text(`Cliente: ${cliente}`, margin, y);
+    doc.text(`Vendedor: ${vendedor}`, margin + contentWidth / 2, y);
+    y += 5;
+    doc.text(`Moneda: ${venta.moneda_usada}`, margin, y);
+    doc.text(`Tasa Bs: ${venta.tasa_bs}`, margin + contentWidth / 2, y);
+
+    y += 8;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Productos", margin, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto", margin, y);
+    doc.text("Cant.", margin + 90, y);
+    doc.text("P. Unit", margin + 115, y);
+    doc.text("Subtotal", margin + 150, y);
+    doc.setFont("helvetica", "normal");
+    y += 4;
+    addDivider(y);
+    y += 6;
+
     venta.sale_items?.forEach((item) => {
-      doc.text(
-        `${item.inventory?.nombre || "Producto"} x${item.cantidad} - ${formatUsd(
-          item.precio_unitario
-        )}`,
-        14,
-        y
-      );
+      if (y > 270) {
+        doc.addPage();
+        y = 18;
+      }
+      const nombre = item.inventory?.nombre || "Producto";
+      const subtotal = Number(item.precio_unitario || 0) * Number(item.cantidad || 0);
+      doc.text(nombre, margin, y);
+      doc.text(String(item.cantidad), margin + 90, y);
+      doc.text(formatUsd(item.precio_unitario), margin + 115, y);
+      doc.text(formatUsd(subtotal), margin + 150, y);
       y += 6;
     });
 
+    y += 4;
+    addDivider(y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(`Total USD: ${formatUsd(venta.total_usd)}`, 14, y + 10);
-    doc.text(`Total Bs: ${formatBs(venta.total_bs)}`, 14, y + 16);
+    doc.text(`Total USD: ${formatUsd(venta.total_usd)}`, margin, y);
+    doc.text(`Total Bs: ${formatBs(venta.total_bs)}`, margin + 80, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("Métodos de pago", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+
+    if (pagos.length === 0) {
+      doc.text("No registrado", margin, y);
+      y += 6;
+    } else {
+      pagos.forEach((pago) => {
+        doc.text(
+          `${pago.metodo}: ${formatUsd(pago.monto_usd)}`,
+          margin,
+          y
+        );
+        y += 6;
+      });
+    }
+
+    if (cambioUsd > 0) {
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("Cambio a entregar", margin, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+      doc.text(`USD: ${formatUsd(cambioUsd)}`, margin, y);
+      doc.text(`BS: ${formatBs(cambioUsd * Number(venta.tasa_bs || 0))}`, margin + 60, y);
+    }
 
     if (preview) {
       const blobUrl = doc.output("bloburl");

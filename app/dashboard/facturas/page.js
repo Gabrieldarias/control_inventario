@@ -31,7 +31,7 @@ export default function FacturasPage() {
     const { data } = await supabase
       .from("sales")
       .select(
-        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre)), payments(metodo, monto_usd), profiles:profiles!sales_user_id_fkey(nombre_persona, nombre_local)"
+        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre))"
       )
       .order("fecha", { ascending: false });
 
@@ -50,9 +50,8 @@ export default function FacturasPage() {
     const pageWidth = 210;
     const contentWidth = pageWidth - margin * 2;
     const fechaTexto = new Date(venta.fecha).toLocaleString("es-VE");
-    const nombreLocal =
-      venta.profiles?.nombre_local || perfil?.nombre_local || "Factura";
-    const vendedor = venta.profiles?.nombre_persona || "Vendedor";
+    const nombreLocal = perfil?.nombre_local || "Factura";
+    const vendedor = perfil?.nombre_persona || "Vendedor";
     const cliente = "Consumidor final";
     const pagos = venta.payments || [];
     const totalPagadoUsd = pagos.reduce(

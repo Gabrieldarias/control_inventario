@@ -408,149 +408,38 @@ export default function InventarioPage() {
                   <th className="text-right">Acciones</th>
                 </tr>
               </thead>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Buscar producto</label>
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                    placeholder="Escribe para buscar..."
-                    value={compraSearch}
-                    onChange={(event) => setCompraSearch(event.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-3">
-                  <div className="text-sm font-semibold text-slate-700">Selecciona productos</div>
-                  <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200">
-                    {items
-                      .filter((item) =>
-                        item.nombre
-                          ?.toLowerCase()
-                          .includes(compraSearch.trim().toLowerCase())
-                      )
-                      .map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
-                          onClick={() => {
-                            setCompraItems((prev) =>
-                              prev.some((linea) => linea.id === item.id)
-                                ? prev
-                                : [
-                                    ...prev,
-                                    {
-                                      id: item.id,
-                                      nombre: item.nombre,
-                                      stock_actual: item.stock,
-                                      cantidad: "",
-                                      precio_compra: item.precio_compra ?? "",
-                                      precio_venta: item.precio_venta ?? "",
-                                    },
-                                  ]
-                            );
-                          }}
-                        >
-                          <span>{item.nombre}</span>
-                          <span className="text-xs text-slate-500">
-                            Stock: {item.stock}
-                          </span>
+              <tbody className="text-slate-700">
+                {items
+                  .filter((item) =>
+                    item.nombre
+                      ?.toLowerCase()
+                      .includes(search.trim().toLowerCase())
+                  )
+                  .map((item) => (
+                    <tr key={item.id} className="border-t border-slate-100">
+                      <td className="py-3">{item.nombre}</td>
+                      <td>{item.stock}</td>
+                      <td>{formatUsd(item.precio_compra)}</td>
+                      <td>{formatUsd(item.precio_venta)}</td>
+                      <td className="text-right space-x-2">
+                        <button className="btn-outline" onClick={() => handleEdit(item)}>
+                          Editar
                         </button>
-                      ))}
-                  </div>
-                </div>
-
-                {compraItems.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="text-left text-slate-500">
-                        <tr>
-                          <th className="py-2">Producto</th>
-                          <th>Stock actual</th>
-                          <th>Cantidad</th>
-                          <th>Precio compra</th>
-                          <th>Precio venta</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-slate-700">
-                        {compraItems.map((linea) => (
-                          <tr key={linea.id} className="border-t border-slate-100">
-                            <td className="py-3">{linea.nombre}</td>
-                            <td>{linea.stock_actual}</td>
-                            <td>
-                              <input
-                                type="number"
-                                className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                                value={linea.cantidad}
-                                onChange={(event) =>
-                                  setCompraItems((prev) =>
-                                    prev.map((item) =>
-                                      item.id === linea.id
-                                        ? { ...item, cantidad: event.target.value }
-                                        : item
-                                    )
-                                  )
-                                }
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                                value={linea.precio_compra}
-                                onChange={(event) =>
-                                  setCompraItems((prev) =>
-                                    prev.map((item) =>
-                                      item.id === linea.id
-                                        ? { ...item, precio_compra: event.target.value }
-                                        : item
-                                    )
-                                  )
-                                }
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                                value={linea.precio_venta}
-                                onChange={(event) =>
-                                  setCompraItems((prev) =>
-                                    prev.map((item) =>
-                                      item.id === linea.id
-                                        ? { ...item, precio_venta: event.target.value }
-                                        : item
-                                    )
-                                  )
-                                }
-                              />
-                            </td>
-                            <td className="text-right">
-                              <button
-                                className="btn-outline"
-                                type="button"
-                                onClick={() =>
-                                  setCompraItems((prev) =>
-                                    prev.filter((item) => item.id !== linea.id)
-                                  )
-                                }
-                              >
-                                Quitar
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        <button className="btn-outline" onClick={() => handleDelete(item.id)}>
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
       {showCompraModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="card w-full max-w-lg p-6">
+          <div className="card w-full max-w-4xl p-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Agregar compra</h3>
               <button
@@ -563,31 +452,142 @@ export default function InventarioPage() {
             </div>
             <form className="mt-4 grid gap-4" onSubmit={handleCompraSubmit}>
               <div>
-                <label className="text-sm font-medium text-slate-700">Producto</label>
-                <select
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={compraProductoId}
-                  onChange={(event) => setCompraProductoId(event.target.value)}
-                  required
-                >
-                  <option value="">Selecciona un producto</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Cantidad</label>
+                <label className="text-sm font-medium text-slate-700">Buscar producto</label>
                 <input
-                  type="number"
+                  type="text"
                   className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={compraCantidad}
-                  onChange={(event) => setCompraCantidad(event.target.value)}
-                  required
+                  placeholder="Escribe para buscar..."
+                  value={compraSearch}
+                  onChange={(event) => setCompraSearch(event.target.value)}
                 />
               </div>
+
+              <div className="grid gap-3">
+                <div className="text-sm font-semibold text-slate-700">Selecciona productos</div>
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200">
+                  {items
+                    .filter((item) =>
+                      item.nombre
+                        ?.toLowerCase()
+                        .includes(compraSearch.trim().toLowerCase())
+                    )
+                    .map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                        onClick={() => {
+                          setCompraItems((prev) =>
+                            prev.some((linea) => linea.id === item.id)
+                              ? prev
+                              : [
+                                  ...prev,
+                                  {
+                                    id: item.id,
+                                    nombre: item.nombre,
+                                    stock_actual: item.stock,
+                                    cantidad: "",
+                                    precio_compra: item.precio_compra ?? "",
+                                    precio_venta: item.precio_venta ?? "",
+                                  },
+                                ]
+                          );
+                        }}
+                      >
+                        <span>{item.nombre}</span>
+                        <span className="text-xs text-slate-500">
+                          Stock: {item.stock}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {compraItems.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-slate-500">
+                      <tr>
+                        <th className="py-2">Producto</th>
+                        <th>Stock actual</th>
+                        <th>Cantidad</th>
+                        <th>Precio compra</th>
+                        <th>Precio venta</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-700">
+                      {compraItems.map((linea) => (
+                        <tr key={linea.id} className="border-t border-slate-100">
+                          <td className="py-3">{linea.nombre}</td>
+                          <td>{linea.stock_actual}</td>
+                          <td>
+                            <input
+                              type="number"
+                              className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                              value={linea.cantidad}
+                              onChange={(event) =>
+                                setCompraItems((prev) =>
+                                  prev.map((item) =>
+                                    item.id === linea.id
+                                      ? { ...item, cantidad: event.target.value }
+                                      : item
+                                  )
+                                )
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                              value={linea.precio_compra}
+                              onChange={(event) =>
+                                setCompraItems((prev) =>
+                                  prev.map((item) =>
+                                    item.id === linea.id
+                                      ? { ...item, precio_compra: event.target.value }
+                                      : item
+                                  )
+                                )
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                              value={linea.precio_venta}
+                              onChange={(event) =>
+                                setCompraItems((prev) =>
+                                  prev.map((item) =>
+                                    item.id === linea.id
+                                      ? { ...item, precio_venta: event.target.value }
+                                      : item
+                                  )
+                                )
+                              }
+                            />
+                          </td>
+                          <td className="text-right">
+                            <button
+                              className="btn-outline"
+                              type="button"
+                              onClick={() =>
+                                setCompraItems((prev) =>
+                                  prev.filter((item) => item.id !== linea.id)
+                                )
+                              }
+                            >
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               {error && (
                 <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
                   {error}

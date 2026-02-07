@@ -25,8 +25,8 @@ export default function InventarioPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showCompraModal, setShowCompraModal] = useState(false);
-  const [compraProductoId, setCompraProductoId] = useState("");
-  const [compraCantidad, setCompraCantidad] = useState("");
+  const [compraItems, setCompraItems] = useState([]);
+  const [compraSearch, setCompraSearch] = useState("");
 
   const cargarInventario = async () => {
     setLoading(true);
@@ -77,7 +77,7 @@ export default function InventarioPage() {
       nombre: newForm.nombre,
       precio_compra: Number(newForm.precio_compra || 0),
       precio_venta: Number(newForm.precio_venta || 0),
-      stock: Number(newForm.stock || 0),
+      stock: 0,
     };
 
     const result = await supabase.from("inventory").insert(payload);
@@ -190,27 +190,37 @@ export default function InventarioPage() {
     setSaving(true);
     setError("");
 
-    const producto = items.find((item) => item.id === compraProductoId);
-    if (!producto) {
-      setError("Selecciona un producto válido.");
+    if (compraItems.length === 0) {
+      setError("Agrega al menos un producto.");
       setSaving(false);
       return;
     }
 
-    const cantidad = Number(compraCantidad || 0);
-    const nuevoStock = producto.stock + cantidad;
+    const updates = compraItems.map((linea) => {
+      const cantidad = Number(linea.cantidad || 0);
+      const compra = Number(linea.precio_compra || 0);
+      const venta = Number(linea.precio_venta || 0);
+      const nuevoStock = Number(linea.stock_actual || 0) + cantidad;
 
-    const { error: updateError } = await supabase
-      .from("inventory")
-      .update({ stock: nuevoStock })
-      .eq("id", producto.id);
+      return supabase
+        .from("inventory")
+        .update({
+          stock: nuevoStock,
+          precio_compra: compra,
+          precio_venta: venta,
+        })
+        .eq("id", linea.id);
+    });
+
+    const results = await Promise.all(updates);
+    const updateError = results.find((result) => result.error)?.error;
 
     if (updateError) {
       setError("No se pudo actualizar el stock.");
     } else {
       setShowCompraModal(false);
-      setCompraProductoId("");
-      setCompraCantidad("");
+      setCompraItems([]);
+      setCompraSearch("");
       await cargarInventario();
     }
     setSaving(false);
@@ -270,17 +280,6 @@ export default function InventarioPage() {
               name="nombre"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
               value={newForm.nombre}
-              onChange={handleNewChange}
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Stock</label>
-            <input
-              name="stock"
-              type="number"
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              value={newForm.stock}
               onChange={handleNewChange}
               required
             />
@@ -409,32 +408,143 @@ export default function InventarioPage() {
                   <th className="text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="text-slate-700">
-                {items
-                  .filter((item) =>
-                    item.nombre
-                      ?.toLowerCase()
-                      .includes(search.trim().toLowerCase())
-                  )
-                  .map((item) => (
-                  <tr key={item.id} className="border-t border-slate-100">
-                    <td className="py-3">{item.nombre}</td>
-                    <td>{item.stock}</td>
-                    <td>{formatUsd(item.precio_compra)}</td>
-                    <td>{formatUsd(item.precio_venta)}</td>
-                    <td className="text-right space-x-2">
-                      <button className="btn-outline" onClick={() => handleEdit(item)}>
-                        Editar
-                      </button>
-                      <button className="btn-outline" onClick={() => handleDelete(item.id)}>
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Buscar producto</label>
+                  <input
+                    type="text"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    placeholder="Escribe para buscar..."
+                    value={compraSearch}
+                    onChange={(event) => setCompraSearch(event.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-3">
+                  <div className="text-sm font-semibold text-slate-700">Selecciona productos</div>
+                  <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200">
+                    {items
+                      .filter((item) =>
+                        item.nombre
+                          ?.toLowerCase()
+                          .includes(compraSearch.trim().toLowerCase())
+                      )
+                      .map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                          onClick={() => {
+                            setCompraItems((prev) =>
+                              prev.some((linea) => linea.id === item.id)
+                                ? prev
+                                : [
+                                    ...prev,
+                                    {
+                                      id: item.id,
+                                      nombre: item.nombre,
+                                      stock_actual: item.stock,
+                                      cantidad: "",
+                                      precio_compra: item.precio_compra ?? "",
+                                      precio_venta: item.precio_venta ?? "",
+                                    },
+                                  ]
+                            );
+                          }}
+                        >
+                          <span>{item.nombre}</span>
+                          <span className="text-xs text-slate-500">
+                            Stock: {item.stock}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                {compraItems.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-slate-500">
+                        <tr>
+                          <th className="py-2">Producto</th>
+                          <th>Stock actual</th>
+                          <th>Cantidad</th>
+                          <th>Precio compra</th>
+                          <th>Precio venta</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-slate-700">
+                        {compraItems.map((linea) => (
+                          <tr key={linea.id} className="border-t border-slate-100">
+                            <td className="py-3">{linea.nombre}</td>
+                            <td>{linea.stock_actual}</td>
+                            <td>
+                              <input
+                                type="number"
+                                className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                                value={linea.cantidad}
+                                onChange={(event) =>
+                                  setCompraItems((prev) =>
+                                    prev.map((item) =>
+                                      item.id === linea.id
+                                        ? { ...item, cantidad: event.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                                value={linea.precio_compra}
+                                onChange={(event) =>
+                                  setCompraItems((prev) =>
+                                    prev.map((item) =>
+                                      item.id === linea.id
+                                        ? { ...item, precio_compra: event.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                                value={linea.precio_venta}
+                                onChange={(event) =>
+                                  setCompraItems((prev) =>
+                                    prev.map((item) =>
+                                      item.id === linea.id
+                                        ? { ...item, precio_venta: event.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="text-right">
+                              <button
+                                className="btn-outline"
+                                type="button"
+                                onClick={() =>
+                                  setCompraItems((prev) =>
+                                    prev.filter((item) => item.id !== linea.id)
+                                  )
+                                }
+                              >
+                                Quitar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
         )}
       </section>
 

@@ -17,6 +17,7 @@ export default function VentasPage() {
     pagoDividido: false,
     monto2: 0,
   });
+  const [montoRecibido, setMontoRecibido] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -110,6 +111,21 @@ export default function VentasPage() {
   const monto1Usd = paymentDetails.pagoDividido
     ? Math.max(0, totalUsd - Number(paymentDetails.monto2 || 0))
     : totalUsd;
+  const montoRecibidoUsd = (() => {
+    const value = Number(montoRecibido || 0);
+    if (!value || Number.isNaN(value)) return 0;
+    if (monedaMetodo1 === "BS") {
+      const rate = Number(tasaBs || 0);
+      return rate > 0 ? value / rate : 0;
+    }
+    return value;
+  })();
+  const totalPagadoUsd = paymentDetails.pagoDividido
+    ? monto1Usd + Number(paymentDetails.monto2 || 0)
+    : montoRecibidoUsd > 0
+      ? montoRecibidoUsd
+      : totalUsd;
+  const cambioUsd = Math.max(0, totalPagadoUsd - totalUsd);
 
   useEffect(() => {
     if (!paymentDetails.pagoDividido) {
@@ -214,6 +230,7 @@ export default function VentasPage() {
       pagoDividido: false,
       monto2: 0,
     });
+    setMontoRecibido("");
     await cargarInventario();
     setSaving(false);
   };
@@ -490,9 +507,39 @@ export default function VentasPage() {
               </div>
             )}
 
+            {!paymentDetails.pagoDividido && (
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Monto recibido ({monedaMetodo1})
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  value={montoRecibido}
+                  onChange={(event) => setMontoRecibido(event.target.value)}
+                  placeholder={`Ej: ${monedaMetodo1 === "BS" ? "500" : "20"}`}
+                />
+                {montoRecibido && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {monedaMetodo1 === "BS"
+                      ? `≈ ${formatUsd(montoRecibidoUsd)}`
+                      : `≈ ${formatBs(montoRecibidoUsd * Number(tasaBs || 0))}`}
+                  </p>
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-slate-500">
               Total: {formatUsd(totalUsd)}
             </p>
+            {cambioUsd > 0 && (
+              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                <p className="font-semibold">Cambio a entregar:</p>
+                <p>USD: {formatUsd(cambioUsd)}</p>
+                <p>BS: {formatBs(cambioUsd * Number(tasaBs || 0))}</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-4">

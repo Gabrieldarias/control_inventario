@@ -9,7 +9,7 @@ const supabase = createSupabaseBrowserClient();
 export default function VentasPage() {
   const [inventario, setInventario] = useState([]);
   const [carrito, setCarrito] = useState([]);
-  const [tasaBs, setTasaBs] = useState(36.5);
+  const [tasaBs, setTasaBs] = useState(500);
   const [moneda, setMoneda] = useState("USD");
   const [paymentDetails, setPaymentDetails] = useState({
     metodo1: "Pago Movil",
@@ -101,9 +101,13 @@ export default function VentasPage() {
   const totalBs = totalUsd * Number(tasaBs || 0);
   const getMetodoAlterno = (actual) =>
     metodosPago.find((m) => m.label !== actual) || metodosPago[0];
-  const monedaMetodo1 = metodosPago.find((m) => m.label === paymentDetails.metodo1)?.moneda;
-  const monedaMetodo2 = metodosPago.find((m) => m.label === paymentDetails.metodo2)?.moneda;
-  const monto1 = paymentDetails.pagoDividido
+  const monedaMetodo1 =
+    metodosPago.find((m) => m.label === paymentDetails.metodo1)?.moneda ||
+    "USD";
+  const monedaMetodo2 =
+    metodosPago.find((m) => m.label === paymentDetails.metodo2)?.moneda ||
+    "USD";
+  const monto1Usd = paymentDetails.pagoDividido
     ? Math.max(0, totalUsd - Number(paymentDetails.monto2 || 0))
     : totalUsd;
 
@@ -153,7 +157,7 @@ export default function VentasPage() {
         setSaving(false);
         return;
       }
-      if (paymentDetails.monto2 <= 0 || monto1 <= 0) {
+      if (paymentDetails.monto2 <= 0 || monto1Usd <= 0) {
         setError("Los montos deben ser mayores a 0.");
         setSaving(false);
         return;
@@ -179,7 +183,7 @@ export default function VentasPage() {
       ? [
           {
             metodo: paymentDetails.metodo1,
-            monto_usd: monto1,
+            monto_usd: monto1Usd,
           },
           {
             metodo: paymentDetails.metodo2,
@@ -363,21 +367,39 @@ export default function VentasPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">
-                  Monto método 1 (USD)
+                  Monto método 1 ({monedaMetodo1})
                 </label>
                 {paymentDetails.pagoDividido ? (
                   <input
                     type="number"
                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-slate-100"
-                    value={monto1.toFixed(2)}
+                    value={
+                      monedaMetodo1 === "BS"
+                        ? (monto1Usd * Number(tasaBs || 0)).toFixed(2)
+                        : monto1Usd.toFixed(2)
+                    }
                     readOnly
                   />
                 ) : (
-                  <p className="mt-1 text-sm font-semibold">{formatUsd(totalUsd)}</p>
+                  <input
+                    type="number"
+                    min="0"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    value={
+                      monedaMetodo1 === "BS"
+                        ? (totalUsd * Number(tasaBs || 0)).toFixed(2)
+                        : totalUsd
+                    }
+                    readOnly
+                  />
                 )}
-                {monedaMetodo1 === "BS" && (
+                {monedaMetodo1 === "BS" ? (
                   <p className="mt-1 text-xs text-slate-500">
-                    ≈ {formatBs(monto1 * Number(tasaBs || 0))}
+                    ≈ {formatUsd(monto1Usd)}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">
+                    ≈ {formatBs(monto1Usd * Number(tasaBs || 0))}
                   </p>
                 )}
               </div>
@@ -430,23 +452,36 @@ export default function VentasPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700">
-                    Monto método 2 (USD)
+                    Monto método 2 ({monedaMetodo2})
                   </label>
                   <input
                     type="number"
                     min="0"
                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                    value={paymentDetails.monto2}
+                    value={
+                      monedaMetodo2 === "BS"
+                        ? (Number(paymentDetails.monto2 || 0) * Number(tasaBs || 0)).toFixed(2)
+                        : paymentDetails.monto2
+                    }
                     onChange={(event) => {
                       const value = Number(event.target.value || 0);
-                      const clamped = Math.min(Math.max(value, 0), totalUsd);
+                      const rate = Number(tasaBs || 0);
+                      const usdValue =
+                        monedaMetodo2 === "BS" && rate > 0
+                          ? value / rate
+                          : value;
+                      const clamped = Math.min(Math.max(usdValue, 0), totalUsd);
                       setPaymentDetails((prev) => ({
                         ...prev,
                         monto2: clamped,
                       }));
                     }}
                   />
-                  {monedaMetodo2 === "BS" && (
+                  {monedaMetodo2 === "BS" ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      ≈ {formatUsd(Number(paymentDetails.monto2 || 0))}
+                    </p>
+                  ) : (
                     <p className="mt-1 text-xs text-slate-500">
                       ≈ {formatBs(Number(paymentDetails.monto2 || 0) * Number(tasaBs || 0))}
                     </p>

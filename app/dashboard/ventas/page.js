@@ -1,22 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "../../../lib/supabaseClient";
 import { formatBs, formatUsd } from "../../../utils/currency";
 
+const supabase = createSupabaseBrowserClient();
+
 export default function VentasPage() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [inventario, setInventario] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [tasaBs, setTasaBs] = useState(36.5);
   const [moneda, setMoneda] = useState("USD");
-  const [metodo1, setMetodo1] = useState("Pago Movil");
-  const [metodo2, setMetodo2] = useState("BS en efectivo");
-  const [monto1, setMonto1] = useState(0);
+  const [paymentDetails, setPaymentDetails] = useState({
+    metodo1: "Pago Movil",
+    metodo2: "BS en efectivo",
+    pagoDividido: false,
+    monto2: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const tasaInitRef = useRef(false);
 
   const metodosPago = [
     { label: "Pago Movil", moneda: "BS" },
@@ -45,13 +50,15 @@ export default function VentasPage() {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem("tasa_bs");
-    if (stored) {
-      setTasaBs(Number(stored));
+    if (!tasaInitRef.current) {
+      tasaInitRef.current = true;
+      const stored = localStorage.getItem("tasa_bs");
+      if (stored) {
+        setTasaBs(Number(stored));
+        return;
+      }
     }
-  }, []);
 
-  useEffect(() => {
     if (tasaBs === "" || Number.isNaN(Number(tasaBs))) return;
     localStorage.setItem("tasa_bs", String(tasaBs));
   }, [tasaBs]);
@@ -96,26 +103,69 @@ export default function VentasPage() {
     0
   );
   const totalBs = totalUsd * Number(tasaBs || 0);
-  const monedaMetodo1 = metodosPago.find((m) => m.label === metodo1)?.moneda;
-  const monto2 = Math.max(0, totalUsd - Number(monto1 || 0));
-
   const getMetodoAlterno = (actual) =>
     metodosPago.find((m) => m.label !== actual) || metodosPago[0];
+  const monto1 = paymentDetails.pagoDividido
+    ? Math.max(0, totalUsd - Number(paymentDetails.monto2 || 0))
+    : totalUsd;
 
   useEffect(() => {
-    if (totalUsd <= 0) {
-      setMonto1(0);
+    if (!paymentDetails.pagoDividido) {
+      setPaymentDetails((prev) => ({
+        ...prev,
+        monto2: 0,
+      }));
       return;
     }
-    if (monto1 > totalUsd) {
-      setMonto1(totalUsd);
+
+    const clamped = Math.min(
+      Math.max(Number(paymentDetails.monto2 || 0), 0),
+      totalUsd
+    );
+    if (clamped !== paymentDetails.monto2) {
+      setPaymentDetails((prev) => ({ ...prev, monto2: clamped }));
+      return;
     }
-  }, [totalUsd]);
+    // monto1 es derivado
+  }, [paymentDetails.pagoDividido, paymentDetails.monto2, totalUsd]);
+
+  useEffect(() => {
+    if (paymentDetails.pagoDividido && paymentDetails.metodo1 === paymentDetails.metodo2) {
+      setPaymentDetails((prev) => ({
+        ...prev,
+        metodo2: getMetodoAlterno(prev.metodo1).label,
+      }));
+    }
+  }, [paymentDetails.pagoDividido, paymentDetails.metodo1, paymentDetails.metodo2]);
 
   const guardarVenta = async () => {
     if (carrito.length === 0) return;
     setSaving(true);
     setError("");
+
+    if (totalUsd <= 0) {
+      setError("El total debe ser mayor a 0.");
+      setSaving(false);
+      return;
+    }
+
+    if (paymentDetails.pagoDividido) {
+      if (paymentDetails.metodo1 === paymentDetails.metodo2) {
+        setError("Los métodos de pago deben ser distintos.");
+        setSaving(false);
+        return;
+      }
+      if (paymentDetails.monto2 <= 0 || monto1 <= 0) {
+        setError("Los montos deben ser mayores a 0.");
+        setSaving(false);
+        return;
+      }
+      if (paymentDetails.monto2 > totalUsd) {
+        setError("El monto del segundo método no puede superar el total.");
+        setSaving(false);
+        return;
+      }
+    }
 
     const {
       data: { user },
@@ -127,31 +177,27 @@ export default function VentasPage() {
       return;
     }
 
-    const pagos = [
-      {
-        metodo: metodo1,
-        monto_usd: monto1,
-        moneda: monedaMetodo1,
-      },
-      {
-        metodo: metodo2,
-        monto_usd: monto2,
-        moneda: metodosPago.find((m) => m.label === metodo2)?.moneda,
-      },
-    ];
+    const pagos = paymentDetails.pagoDividido
+      ? [
+          {
+            metodo: paymentDetails.metodo1,
+            monto_usd: monto1,
+          },
+          {
+            metodo: paymentDetails.metodo2,
+            monto_usd: paymentDetails.monto2,
+          },
+        ]
+      : [{ metodo: paymentDetails.metodo1, monto_usd: totalUsd }];
 
-    const { data: venta, error: ventaError } = await supabase
-      .from("sales")
-      .insert({
-        user_id: user.id,
-        total_usd: totalUsd,
-        total_bs: totalBs,
-        moneda_usada: moneda,
-        tasa_bs: Number(tasaBs || 0),
-        fecha: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    const { error: ventaError } = await supabase.rpc("process_sale", {
+      p_items: carrito,
+      p_total_usd: totalUsd,
+      p_total_bs: totalBs,
+      p_tasa: Number(tasaBs || 0),
+      p_moneda: moneda,
+      p_pagos: pagos,
+    });
 
     if (ventaError) {
       setError("No se pudo guardar la venta.");
@@ -159,37 +205,13 @@ export default function VentasPage() {
       return;
     }
 
-    await supabase.from("invoices").insert({
-      sale_id: venta.id,
-      user_id: user.id,
-    });
-
-    const itemsPayload = carrito.map((item) => ({
-      sale_id: venta.id,
-      inventory_id: item.id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("sale_items")
-      .insert(itemsPayload);
-
-    if (itemsError) {
-      setError("No se pudieron guardar los productos de la venta.");
-      setSaving(false);
-      return;
-    }
-
-    for (const item of carrito) {
-      const nuevoStock = Math.max(0, item.stock - item.cantidad);
-      await supabase
-        .from("inventory")
-        .update({ stock: nuevoStock })
-        .eq("id", item.id);
-    }
-
     setCarrito([]);
+    setPaymentDetails({
+      metodo1: "Pago Movil",
+      metodo2: "BS en efectivo",
+      pagoDividido: false,
+      monto2: 0,
+    });
     await cargarInventario();
     setSaving(false);
   };
@@ -313,7 +335,7 @@ export default function VentasPage() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700">Pago dividido</h3>
+            <h3 className="text-sm font-semibold text-slate-700">Pago</h3>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-slate-700">
@@ -321,13 +343,17 @@ export default function VentasPage() {
                 </label>
                 <select
                   className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={metodo1}
+                  value={paymentDetails.metodo1}
                   onChange={(event) => {
                     const value = event.target.value;
-                    setMetodo1(value);
-                    if (value === metodo2) {
-                      setMetodo2(getMetodoAlterno(value).label);
-                    }
+                    setPaymentDetails((prev) => ({
+                      ...prev,
+                      metodo1: value,
+                      metodo2:
+                        prev.pagoDividido && value === prev.metodo2
+                          ? getMetodoAlterno(value).label
+                          : prev.metodo2,
+                    }));
                   }}
                 >
                   {metodosPago.map((m) => (
@@ -341,54 +367,88 @@ export default function VentasPage() {
                 <label className="text-sm font-medium text-slate-700">
                   Monto método 1 (USD)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={monto1}
-                  onChange={(event) => {
-                    const value = Number(event.target.value || 0);
-                    const clamped = Math.min(Math.max(value, 0), totalUsd);
-                    setMonto1(clamped);
-                  }}
-                />
+                {paymentDetails.pagoDividido ? (
+                  <input
+                    type="number"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-slate-100"
+                    value={monto1.toFixed(2)}
+                    readOnly
+                  />
+                ) : (
+                  <p className="mt-1 text-sm font-semibold">{formatUsd(totalUsd)}</p>
+                )}
               </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Método de pago 2
-                </label>
-                <select
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                  value={metodo2}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setMetodo2(value);
-                    if (value === metodo1) {
-                      setMetodo1(getMetodoAlterno(value).label);
-                    }
-                  }}
-                >
-                  {metodosPago.map((m) => (
-                    <option key={m.label} value={m.label}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">
-                  Monto método 2 (USD)
-                </label>
+              <div className="md:col-span-2 flex items-center gap-2">
                 <input
-                  type="number"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-slate-100"
-                  value={monto2.toFixed(2)}
-                  readOnly
+                  id="pago-dividido"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={paymentDetails.pagoDividido}
+                  onChange={(event) =>
+                    setPaymentDetails((prev) => ({
+                      ...prev,
+                      pagoDividido: event.target.checked,
+                    }))
+                  }
                 />
+                <label htmlFor="pago-dividido" className="text-sm text-slate-700">
+                  Pagar con dos métodos
+                </label>
               </div>
             </div>
+
+            {paymentDetails.pagoDividido && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">
+                    Método de pago 2
+                  </label>
+                  <select
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    value={paymentDetails.metodo2}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setPaymentDetails((prev) => ({
+                        ...prev,
+                        metodo2: value,
+                        metodo1:
+                          value === prev.metodo1
+                            ? getMetodoAlterno(value).label
+                            : prev.metodo1,
+                      }));
+                    }}
+                  >
+                    {metodosPago.map((m) => (
+                      <option key={m.label} value={m.label}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">
+                    Monto método 2 (USD)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                    value={paymentDetails.monto2}
+                    onChange={(event) => {
+                      const value = Number(event.target.value || 0);
+                      const clamped = Math.min(Math.max(value, 0), totalUsd);
+                      setPaymentDetails((prev) => ({
+                        ...prev,
+                        monto2: clamped,
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-slate-500">
-              Total: {formatUsd(totalUsd)} (método 1 + método 2)
+              Total: {formatUsd(totalUsd)}
             </p>
           </div>
 

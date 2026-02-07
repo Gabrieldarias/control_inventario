@@ -121,7 +121,7 @@ export default function VentasPage() {
     return value;
   })();
   const totalPagadoUsd = paymentDetails.pagoDividido
-    ? montoRecibidoUsd
+    ? montoRecibidoUsd + Number(paymentDetails.monto2 || 0)
     : montoRecibidoUsd > 0
       ? montoRecibidoUsd
       : totalUsd;

@@ -17,6 +17,7 @@ export default function VentasPage() {
     pagoDividido: false,
     monto2: 0,
   });
+  const [montoRecibido, setMontoRecibido] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -99,6 +100,10 @@ export default function VentasPage() {
     0
   );
   const totalBs = totalUsd * Number(tasaBs || 0);
+  const totalPagadoUsd = paymentDetails.pagoDividido
+    ? Number(montoRecibido || 0) + Number(paymentDetails.monto2 || 0)
+    : Number(montoRecibido || 0);
+  const cambioUsd = Math.max(0, totalPagadoUsd - totalUsd);
   const getMetodoAlterno = (actual) =>
     metodosPago.find((m) => m.label !== actual) || metodosPago[0];
   const monto1 = paymentDetails.pagoDividido
@@ -485,9 +490,35 @@ export default function VentasPage() {
               </div>
             )}
 
+            <div>
+              <label className="text-sm font-medium text-slate-700">
+                Monto recibido (USD)
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                value={montoRecibido}
+                onChange={(event) => setMontoRecibido(event.target.value)}
+                placeholder="Ej: 20"
+              />
+              {montoRecibido && (
+                <p className="mt-1 text-xs text-slate-500">
+                  ≈ {formatBs(Number(montoRecibido || 0) * Number(tasaBs || 0))}
+                </p>
+              )}
+            </div>
+
             <p className="text-xs text-slate-500">
               Total: {formatUsd(totalUsd)}
             </p>
+            {cambioUsd > 0 && (
+              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                <p className="font-semibold">Cambio a entregar:</p>
+                <p>USD: {formatUsd(cambioUsd)}</p>
+                <p>BS: {formatBs(cambioUsd * Number(tasaBs || 0))}</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-4">

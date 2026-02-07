@@ -121,7 +121,7 @@ export default function VentasPage() {
     return value;
   })();
   const totalPagadoUsd = paymentDetails.pagoDividido
-    ? monto1Usd + Number(paymentDetails.monto2 || 0)
+    ? montoRecibidoUsd
     : montoRecibidoUsd > 0
       ? montoRecibidoUsd
       : totalUsd;
@@ -543,13 +543,7 @@ export default function VentasPage() {
                 value={montoRecibido}
                 onChange={(event) => setMontoRecibido(event.target.value)}
                 placeholder={`Ej: ${monedaMetodo1 === "BS" ? "500" : "20"}`}
-                disabled={paymentDetails.pagoDividido}
               />
-              {paymentDetails.pagoDividido && (
-                <p className="mt-1 text-xs text-slate-500">
-                  El cambio en pago dividido se calcula con la suma de métodos.
-                </p>
-              )}
               {montoRecibido && (
                 <p className="mt-1 text-xs text-slate-500">
                   {monedaMetodo1 === "BS"

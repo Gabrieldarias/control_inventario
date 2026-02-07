@@ -23,6 +23,8 @@ export default function VentasPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [showVentaModal, setShowVentaModal] = useState(false);
+  const [ventaPdfData, setVentaPdfData] = useState(null);
   const tasaInitRef = useRef(false);
 
   const metodosPago = [
@@ -411,7 +413,7 @@ export default function VentasPage() {
         ]
       : [{ metodo: paymentDetails.metodo1, monto_usd: monto1UsdCalc }];
 
-    generarPdfVenta({
+    setVentaPdfData({
       ventaId: venta.id,
       fecha: venta.fecha,
       totalUsd,
@@ -423,6 +425,7 @@ export default function VentasPage() {
       nombreLocal: profile?.nombre_local,
       vendedor: profile?.nombre_persona,
     });
+    setShowVentaModal(true);
 
     setCarrito([]);
     setPaymentDetails({
@@ -431,6 +434,7 @@ export default function VentasPage() {
       pagoDividido: false,
       monto1: 0,
     });
+    setMontoRecibido("");
     await cargarInventario();
     setSaving(false);
   };
@@ -711,6 +715,38 @@ export default function VentasPage() {
           </button>
         </section>
       </div>
+
+      {showVentaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="card w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Venta registrada</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              ¿Qué deseas hacer?
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={() => {
+                  if (ventaPdfData) generarPdfVenta(ventaPdfData);
+                }}
+              >
+                Imprimir PDF
+              </button>
+              <button
+                className="btn-outline"
+                type="button"
+                onClick={() => {
+                  setShowVentaModal(false);
+                  setVentaPdfData(null);
+                }}
+              >
+                Nueva venta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -272,6 +272,119 @@ export default function VentasPage() {
     window.open(blobUrl, "_blank", "noopener,noreferrer");
   };
 
+  const guardarPdfVenta = (data) => {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const margin = 14;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - margin * 2;
+    const fechaTexto = new Date(data.fecha).toLocaleString("es-VE");
+    const cliente = "Consumidor final";
+    const totalPagadoUsd = data.pagos.reduce(
+      (acc, pago) => acc + Number(pago.monto_usd || 0),
+      0
+    );
+    const cambioUsd = Math.max(0, totalPagadoUsd - Number(data.totalUsd || 0));
+
+    const addDivider = (y) => {
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+    };
+
+    let y = 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(data.nombreLocal || "Factura", margin, y);
+    doc.setFontSize(12);
+    doc.text("Factura de venta", margin, y + 7);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y, { align: "right" });
+    doc.text(`Venta #${data.ventaId.slice(0, 6)}`, pageWidth - margin, y + 6, {
+      align: "right",
+    });
+
+    y += 16;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalles", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+    doc.text(`Cliente: ${cliente}`, margin, y);
+    doc.text(`Vendedor: ${data.vendedor || "Vendedor"}`, margin + contentWidth / 2, y);
+    y += 5;
+    doc.text(`Moneda: ${data.monedaUsada}`, margin, y);
+    doc.text(`Tasa Bs: ${data.tasaBs}`, margin + contentWidth / 2, y);
+
+    y += 8;
+    addDivider(y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Productos", margin, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto", margin, y);
+    doc.text("Cant.", margin + 90, y);
+    doc.text("P. Unit", margin + 115, y);
+    doc.text("Subtotal", margin + 150, y);
+    doc.setFont("helvetica", "normal");
+    y += 4;
+    addDivider(y);
+    y += 6;
+
+    data.items.forEach((item) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 18;
+      }
+      const subtotal = Number(item.precio_unitario || 0) * Number(item.cantidad || 0);
+      doc.text(String(item.nombre || "Producto"), margin, y);
+      doc.text(String(item.cantidad || 0), margin + 90, y);
+      doc.text(formatUsd(item.precio_unitario), margin + 115, y);
+      doc.text(formatUsd(subtotal), margin + 150, y);
+      y += 6;
+    });
+
+    y += 4;
+    addDivider(y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Total USD: ${formatUsd(data.totalUsd)}`, margin, y);
+    doc.text(`Total Bs: ${formatBs(data.totalBs)}`, margin + 80, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("Métodos de pago", margin, y);
+    doc.setFont("helvetica", "normal");
+    y += 6;
+
+    data.pagos.forEach((pago) => {
+      doc.text(`${pago.metodo}: ${formatUsd(pago.monto_usd)}`, margin, y);
+      y += 6;
+    });
+
+    if (cambioUsd > 0) {
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("Cambio a entregar", margin, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+      doc.text(`USD: ${formatUsd(cambioUsd)}`, margin, y);
+      doc.text(`BS: ${formatBs(cambioUsd * Number(data.tasaBs || 0))}`, margin + 60, y);
+    }
+
+    doc.save(`venta-${data.ventaId.slice(0, 6)}.pdf`);
+  };
+
   const guardarVenta = async () => {
     if (carrito.length === 0) return;
     setSaving(true);
@@ -733,6 +846,15 @@ export default function VentasPage() {
                 }}
               >
                 Imprimir PDF
+              </button>
+              <button
+                className="btn-outline"
+                type="button"
+                onClick={() => {
+                  if (ventaPdfData) guardarPdfVenta(ventaPdfData);
+                }}
+              >
+                Guardar PDF
               </button>
               <button
                 className="btn-outline"

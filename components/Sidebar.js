@@ -21,13 +21,13 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-full md:w-64">
+    <aside className="w-full md:w-64 md:sticky md:top-0 md:h-screen">
       <div className="card p-6 h-full flex flex-col">
         <div className="mb-8">
           <p className="text-xs font-semibold text-slate-500">Gestion Comercial</p>
           <h2 className="text-lg font-bold text-slate-900">Panel vendedor</h2>
         </div>
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-2 overflow-y-auto">
           {items.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -45,7 +45,7 @@ export default function Sidebar() {
             );
           })}
         </nav>
-        <button className="btn-logout mt-6" onClick={handleLogout} type="button">
+        <button className="btn-logout mt-6 flex-shrink-0" onClick={handleLogout} type="button">
           Cerrar sesión
         </button>
       </div>

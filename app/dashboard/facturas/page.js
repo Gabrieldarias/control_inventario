@@ -33,7 +33,7 @@ export default function FacturasPage() {
     const { data } = await supabase
       .from("sales")
       .select(
-        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre))"
+        "id, total_usd, total_bs, moneda_usada, tasa_bs, fecha, cliente_nombre, cliente_documento, cliente_telefono, observaciones, sale_items(id, cantidad, precio_unitario, inventory:inventory_id(nombre))"
       )
       .order("fecha", { ascending: false });
 

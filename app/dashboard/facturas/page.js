@@ -62,33 +62,49 @@ export default function FacturasPage() {
     );
     const cambioUsd = Math.max(0, totalPagadoUsd - Number(venta.total_usd || 0));
 
-    const addDivider = (y) => {
-      doc.setDrawColor(220);
+    // Colores del tema azul/gris profesional
+    const colorPrimario = [41, 98, 255]; // Azul
+    const colorHeader = [30, 58, 138]; // Azul oscuro
+    const colorFondoAlt = [248, 250, 252]; // Gris claro
+    const colorFondoTotal = [219, 234, 254]; // Azul claro
+
+    const addDivider = (y, color = [220, 220, 220]) => {
+      doc.setDrawColor(...color);
       doc.setLineWidth(0.3);
       doc.line(margin, y, pageWidth - margin, y);
     };
 
-    let y = 18;
+    // Encabezado con fondo azul
+    let y = 10;
+    doc.setFillColor(...colorHeader);
+    doc.rect(0, 0, pageWidth, 35, "F");
+    
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(nombreLocal, margin, y);
-    doc.setFontSize(12);
-    doc.text("Factura de venta", margin, y + 7);
+    doc.setFontSize(18);
+    doc.text(nombreLocal, margin, y + 8);
+    doc.setFontSize(11);
+    doc.text("Factura de venta", margin, y + 15);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y, { align: "right" });
-    doc.text(`Venta #${venta.id.slice(0, 6)}`, pageWidth - margin, y + 6, {
+    doc.setFontSize(9);
+    doc.text(`Fecha: ${fechaTexto}`, pageWidth - margin, y + 8, { align: "right" });
+    doc.text(`Venta #${venta.id.slice(0, 6)}`, pageWidth - margin, y + 14, {
       align: "right",
     });
 
-    y += 16;
-    addDivider(y);
-    y += 6;
+    // Volver a color negro para el contenido
+    doc.setTextColor(0, 0, 0);
+    y = 42;
 
+    // Sección Detalles con título en azul
+    doc.setTextColor(...colorPrimario);
     doc.setFont("helvetica", "bold");
-    doc.text("Detalles", margin, y);
+    doc.setFontSize(11);
+    doc.text("Detalles del Cliente", margin, y);
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
     y += 6;
     doc.text(`Cliente: ${cliente}`, margin, y);
     doc.text(`Vendedor: ${vendedor}`, margin + contentWidth / 2, y);
@@ -109,57 +125,81 @@ export default function FacturasPage() {
     }
 
     y += 8;
-    addDivider(y);
-    y += 6;
+    addDivider(y, [200, 200, 200]);
+    y += 8;
 
+    // Tabla de productos con encabezado azul
+    doc.setTextColor(...colorPrimario);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
     doc.text("Productos", margin, y);
     y += 6;
 
+    // Encabezado de tabla con fondo azul claro
+    doc.setFillColor(...colorFondoTotal);
+    doc.rect(margin, y - 4, contentWidth, 7, "F");
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
-    doc.text("Producto", margin, y);
-    doc.text("Cant.", margin + 90, y);
-    doc.text("P. Unit", margin + 115, y);
-    doc.text("Subtotal", margin + 150, y);
+    doc.setFontSize(9);
+    doc.text("Producto", margin + 2, y);
+    doc.text("Cant.", margin + 92, y);
+    doc.text("P. Unit", margin + 117, y);
+    doc.text("Subtotal", margin + 152, y);
     doc.setFont("helvetica", "normal");
-    y += 4;
-    addDivider(y);
     y += 6;
 
+    // Productos con filas alternadas
+    let isAlt = false;
     venta.sale_items?.forEach((item) => {
       if (y > 270) {
         doc.addPage();
-        y = 18;
+        y = 20;
+        isAlt = false;
       }
+      
+      if (isAlt) {
+        doc.setFillColor(...colorFondoAlt);
+        doc.rect(margin, y - 4, contentWidth, 6, "F");
+      }
+      
       const nombre = item.inventory?.nombre || "Producto";
       const subtotal = Number(item.precio_unitario || 0) * Number(item.cantidad || 0);
-      doc.text(nombre, margin, y);
-      doc.text(String(item.cantidad), margin + 90, y);
-      doc.text(formatUsd(item.precio_unitario), margin + 115, y);
-      doc.text(formatUsd(subtotal), margin + 150, y);
+      doc.setTextColor(0, 0, 0);
+      doc.text(nombre, margin + 2, y);
+      doc.text(String(item.cantidad), margin + 92, y);
+      doc.text(formatUsd(item.precio_unitario), margin + 117, y);
+      doc.text(formatUsd(subtotal), margin + 152, y);
       y += 6;
+      isAlt = !isAlt;
     });
 
     y += 4;
-    addDivider(y);
+    addDivider(y, colorPrimario);
     y += 8;
 
+    // Totales con fondo azul claro
+    doc.setFillColor(...colorFondoTotal);
+    doc.rect(margin, y - 5, contentWidth, 10, "F");
+    doc.setTextColor(...colorHeader);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`Total USD: ${formatUsd(venta.total_usd)}`, margin, y);
-    doc.text(`Total Bs: ${formatBs(venta.total_bs)}`, margin + 80, y);
-    doc.setFontSize(10);
+    doc.setFontSize(11);
+    doc.text(`Total USD: ${formatUsd(venta.total_usd)}`, margin + 2, y);
+    doc.text(`Total Bs: ${formatBs(venta.total_bs)}`, margin + 82, y);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
 
-    y += 10;
+    y += 12;
+    doc.setTextColor(...colorPrimario);
     doc.setFont("helvetica", "bold");
     doc.text("Métodos de pago", margin, y);
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
     y += 6;
 
     if (pagos.length === 0) {
       doc.text("No registrado", margin, y);
-      y += 6;
+      y += 5;
     } else {
       pagos.forEach((pago) => {
         doc.text(
@@ -167,18 +207,22 @@ export default function FacturasPage() {
           margin,
           y
         );
-        y += 6;
+        y += 5;
       });
     }
 
     if (cambioUsd > 0) {
       y += 4;
+      doc.setFillColor(220, 252, 231); // Verde claro
+      doc.rect(margin, y - 4, contentWidth, 12, "F");
+      doc.setTextColor(21, 128, 61); // Verde oscuro
       doc.setFont("helvetica", "bold");
-      doc.text("Cambio a entregar", margin, y);
+      doc.text("Cambio a entregar", margin + 2, y);
       doc.setFont("helvetica", "normal");
       y += 6;
-      doc.text(`USD: ${formatUsd(cambioUsd)}`, margin, y);
-      doc.text(`BS: ${formatBs(cambioUsd * Number(venta.tasa_bs || 0))}`, margin + 60, y);
+      doc.text(`USD: ${formatUsd(cambioUsd)}`, margin + 2, y);
+      doc.text(`BS: ${formatBs(cambioUsd * Number(venta.tasa_bs || 0))}`, margin + 62, y);
+      doc.setTextColor(0, 0, 0);
     }
 
     if (preview) {

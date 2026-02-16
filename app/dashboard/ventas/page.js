@@ -279,8 +279,9 @@ export default function VentasPage() {
 
     const tasa = Number(tasaBs || 0);
     const monto1Number = Number(paymentDetails.monto1 || 0);
-    const monto1UsdCalc =
+    const monto1UsdBase =
       monedaMetodo1 === "BS" && tasa > 0 ? monto1Number / tasa : monto1Number;
+    const monto1UsdCalc = monto1UsdBase > 0 ? monto1UsdBase : totalUsd;
     const monto2Number = paymentDetails.pagoDividido
       ? Math.max(0, totalUsd - monto1UsdCalc)
       : 0;

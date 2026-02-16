@@ -54,7 +54,7 @@ export default function FacturasPage() {
     const fechaTexto = new Date(venta.fecha).toLocaleString("es-VE");
     const nombreLocal = perfil?.nombre_local || "Factura";
     const vendedor = perfil?.nombre_persona || "Vendedor";
-    const cliente = "Consumidor final";
+    const cliente = venta.cliente_nombre || "Consumidor final";
     const pagos = venta.payments || [];
     const totalPagadoUsd = pagos.reduce(
       (acc, pago) => acc + Number(pago.monto_usd || 0),
@@ -93,8 +93,20 @@ export default function FacturasPage() {
     doc.text(`Cliente: ${cliente}`, margin, y);
     doc.text(`Vendedor: ${vendedor}`, margin + contentWidth / 2, y);
     y += 5;
+    if (venta.cliente_documento) {
+      doc.text(`RIF/CI: ${venta.cliente_documento}`, margin, y);
+      y += 5;
+    }
+    if (venta.cliente_telefono) {
+      doc.text(`Teléfono: ${venta.cliente_telefono}`, margin, y);
+      y += 5;
+    }
     doc.text(`Moneda: ${venta.moneda_usada}`, margin, y);
     doc.text(`Tasa Bs: ${venta.tasa_bs}`, margin + contentWidth / 2, y);
+    if (venta.observaciones) {
+      y += 5;
+      doc.text(`Obs: ${venta.observaciones}`, margin, y);
+    }
 
     y += 8;
     addDivider(y);

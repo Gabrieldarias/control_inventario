@@ -58,7 +58,11 @@ create table if not exists sales (
   total_bs numeric(10, 2) not null default 0,
   moneda_usada text not null check (moneda_usada in ('USD', 'BS')),
   tasa_bs numeric(10, 2) not null default 0,
-  fecha timestamptz not null default now()
+  fecha timestamptz not null default now(),
+  cliente_nombre text,
+  cliente_documento text,
+  cliente_telefono text,
+  observaciones text
 );
 
 -- Detalle de ventas

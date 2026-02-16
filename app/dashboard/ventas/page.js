@@ -25,6 +25,12 @@ export default function VentasPage() {
   const [search, setSearch] = useState("");
   const [showVentaModal, setShowVentaModal] = useState(false);
   const [ventaPdfData, setVentaPdfData] = useState(null);
+  const [clienteInfo, setClienteInfo] = useState({
+    nombre: "",
+    documento: "",
+    telefono: "",
+    observaciones: "",
+  });
   const tasaInitRef = useRef(false);
 
   const metodosPago = [
@@ -158,13 +164,17 @@ export default function VentasPage() {
     pagos,
     nombreLocal,
     vendedor,
+    clienteNombre,
+    clienteDocumento,
+    clienteTelefono,
+    observaciones,
   }) => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const margin = 14;
     const pageWidth = 210;
     const contentWidth = pageWidth - margin * 2;
     const fechaTexto = new Date(fecha).toLocaleString("es-VE");
-    const cliente = "Consumidor final";
+    const cliente = clienteNombre || "Consumidor final";
     const totalPagadoUsd = pagos.reduce(
       (acc, pago) => acc + Number(pago.monto_usd || 0),
       0
@@ -202,8 +212,20 @@ export default function VentasPage() {
     doc.text(`Cliente: ${cliente}`, margin, y);
     doc.text(`Vendedor: ${vendedor || "Vendedor"}`, margin + contentWidth / 2, y);
     y += 5;
+    if (clienteDocumento) {
+      doc.text(`RIF/CI: ${clienteDocumento}`, margin, y);
+      y += 5;
+    }
+    if (clienteTelefono) {
+      doc.text(`Teléfono: ${clienteTelefono}`, margin, y);
+      y += 5;
+    }
     doc.text(`Moneda: ${monedaUsada}`, margin, y);
     doc.text(`Tasa Bs: ${tasaBs}`, margin + contentWidth / 2, y);
+    if (observaciones) {
+      y += 5;
+      doc.text(`Obs: ${observaciones}`, margin, y);
+    }
 
     y += 8;
     addDivider(y);
@@ -278,7 +300,7 @@ export default function VentasPage() {
     const pageWidth = 210;
     const contentWidth = pageWidth - margin * 2;
     const fechaTexto = new Date(data.fecha).toLocaleString("es-VE");
-    const cliente = "Consumidor final";
+    const cliente = data.clienteNombre || "Consumidor final";
     const totalPagadoUsd = data.pagos.reduce(
       (acc, pago) => acc + Number(pago.monto_usd || 0),
       0
@@ -316,8 +338,20 @@ export default function VentasPage() {
     doc.text(`Cliente: ${cliente}`, margin, y);
     doc.text(`Vendedor: ${data.vendedor || "Vendedor"}`, margin + contentWidth / 2, y);
     y += 5;
+    if (data.clienteDocumento) {
+      doc.text(`RIF/CI: ${data.clienteDocumento}`, margin, y);
+      y += 5;
+    }
+    if (data.clienteTelefono) {
+      doc.text(`Teléfono: ${data.clienteTelefono}`, margin, y);
+      y += 5;
+    }
     doc.text(`Moneda: ${data.monedaUsada}`, margin, y);
     doc.text(`Tasa Bs: ${data.tasaBs}`, margin + contentWidth / 2, y);
+    if (data.observaciones) {
+      y += 5;
+      doc.text(`Obs: ${data.observaciones}`, margin, y);
+    }
 
     y += 8;
     addDivider(y);
@@ -462,6 +496,10 @@ export default function VentasPage() {
         moneda_usada: moneda,
         tasa_bs: tasa,
         fecha: new Date().toISOString(),
+        cliente_nombre: clienteInfo.nombre || null,
+        cliente_documento: clienteInfo.documento || null,
+        cliente_telefono: clienteInfo.telefono || null,
+        observaciones: clienteInfo.observaciones || null,
       })
       .select()
       .single();
@@ -538,6 +576,10 @@ export default function VentasPage() {
       pagos,
       nombreLocal: profile?.nombre_local,
       vendedor: profile?.nombre_persona,
+      clienteNombre: clienteInfo.nombre,
+      clienteDocumento: clienteInfo.documento,
+      clienteTelefono: clienteInfo.telefono,
+      observaciones: clienteInfo.observaciones,
     });
     setShowVentaModal(true);
 
@@ -549,6 +591,12 @@ export default function VentasPage() {
       monto1: 0,
     });
     setMontoRecibido("");
+    setClienteInfo({
+      nombre: "",
+      documento: "",
+      telefono: "",
+      observaciones: "",
+    });
     await cargarInventario();
     setSaving(false);
   };
@@ -668,6 +716,53 @@ export default function VentasPage() {
             <div className="flex justify-between">
               <span>Total Bs</span>
               <span className="font-semibold">{formatBs(totalBs)}</span>
+            </div>
+          </div>
+
+          {/* Datos del cliente */}
+          <div className="mt-6 space-y-3 pb-4 border-b border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-700">Datos del cliente (opcional)</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Nombre</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Nombre del cliente"
+                  value={clienteInfo.nombre}
+                  onChange={(e) => setClienteInfo(prev => ({ ...prev, nombre: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">RIF/CI</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="V-12345678"
+                  value={clienteInfo.documento}
+                  onChange={(e) => setClienteInfo(prev => ({ ...prev, documento: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Teléfono</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="0424-1234567"
+                  value={clienteInfo.telefono}
+                  onChange={(e) => setClienteInfo(prev => ({ ...prev, telefono: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600">Observaciones</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Notas adicionales"
+                  value={clienteInfo.observaciones}
+                  onChange={(e) => setClienteInfo(prev => ({ ...prev, observaciones: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
 
